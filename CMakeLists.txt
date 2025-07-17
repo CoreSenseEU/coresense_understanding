@@ -7,18 +7,29 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(coresense_vampire REQUIRED)
+find_package(coresense_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
 
-add_executable(coresense_understanding src/coresense_understanding.cpp)
-target_include_directories(coresense_understanding PUBLIC
+add_executable(understanding_system_node src/coresense_understanding.cpp)
+target_include_directories(understanding_system_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(coresense_understanding PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(understanding_system_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+ament_target_dependencies(understanding_system_node rclcpp rclcpp_action ament_index_cpp coresense_msgs)
 
-install(TARGETS coresense_understanding
+install(TARGETS understanding_system_node
   DESTINATION lib/${PROJECT_NAME})
+
+install(
+  DIRECTORY understanding-logic
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
