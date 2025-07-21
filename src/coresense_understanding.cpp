@@ -57,7 +57,7 @@ public:
     this->read_logic();
     this->add_knowledge(this->get_theories());
     Problem p = this->read_problem(ament_index_cpp::get_package_share_directory("coresense_understanding") + "/understanding-logic/tff/tests/test-wind-scenario.tff");
-    this->send_goal(p.content, "-s 1011");
+    this->send_goal(p.content, "-t 1");
     //RCLCPP_INFO(this->get_logger(), this->get_theories().c_str());
   }
 
@@ -255,6 +255,7 @@ private:
     send_goal_options.result_callback =[this](const QueryReasonerActionGoalHandle::WrappedResult & result) {
       switch (result.code) {
         case rclcpp_action::ResultCode::SUCCEEDED:
+          RCLCPP_INFO(this->get_logger(), "Goal succeeded. lambda");
           break;
         case rclcpp_action::ResultCode::ABORTED:
           RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
@@ -272,47 +273,13 @@ private:
       //  ss << number << " ";
       //}
       RCLCPP_INFO(this->get_logger(), ss.str().c_str());
+      RCLCPP_INFO(this->get_logger(), result.result.c_str());
       rclcpp::shutdown();
     };
     this->query_reasoner_action_client_ptr->async_send_goal(goal_msg, send_goal_options);
   }
 
-  void query_reasoner_goal_response_callback(std::shared_future<QueryReasonerActionGoalHandle::SharedPtr> future)
-  {
-    auto goal_handle = future.get();
-    if (!goal_handle) {
-      RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-    } else {
-      RCLCPP_INFO(this->get_logger(), "Goal accepted by server, waiting for result");
-    }
-  }
 
-  void query_reasoner_feedback_callback(
-    QueryReasonerActionGoalHandle::SharedPtr,
-    const std::shared_ptr<const QueryReasonerAction::Feedback> feedback)
-  {
-   RCLCPP_INFO(this->get_logger(), feedback->status.c_str());
-   // do something
-  }
-
-  void query_reasoner_result_callback(const QueryReasonerActionGoalHandle::WrappedResult & result)
-  {
-    switch (result.code) {
-      case rclcpp_action::ResultCode::SUCCEEDED:
-        break;
-      case rclcpp_action::ResultCode::ABORTED:
-        RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
-        return;
-      case rclcpp_action::ResultCode::CANCELED:
-        RCLCPP_ERROR(this->get_logger(), "Goal was canceled");
-        return;
-      default:
-        RCLCPP_ERROR(this->get_logger(), "Unknown result code");
-        return;
-    }
-    // do something
-    rclcpp::shutdown();
-  }
 };
 }
 
