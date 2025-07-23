@@ -57,7 +57,10 @@ public:
     this->read_logic();
     this->add_knowledge(this->get_theories());
     Problem p = this->read_problem(ament_index_cpp::get_package_share_directory("coresense_understanding") + "/understanding-logic/tff/tests/test-wind-scenario.tff");
-    this->send_goal(p.content, "-t 1");
+    //this->send_goal(p.content, "--selection 10 --output_mode vampire --proof off --theory_axioms off --saturation_algorithm fmb --term_ordering lpo");
+    //this->send_goal(p.content, "--selection 10 --output_mode vampire --proof off --theory_axioms on --saturation_algorithm fmb");
+    this->send_goal(p.content, "--selection 1011 --proof off");
+    //this->send_goal(p.content, "--selection 1011 --output_mode vampire --proof off");
     //RCLCPP_INFO(this->get_logger(), this->get_theories().c_str());
   }
 
@@ -252,10 +255,11 @@ private:
       RCLCPP_INFO(this->get_logger(), ss.str().c_str());
     };
 
-    send_goal_options.result_callback =[this](const QueryReasonerActionGoalHandle::WrappedResult & result) {
-      switch (result.code) {
+    send_goal_options.result_callback =[this](const QueryReasonerActionGoalHandle::WrappedResult & wrapped_result) {
+      switch (wrapped_result.code) {
         case rclcpp_action::ResultCode::SUCCEEDED:
-          RCLCPP_INFO(this->get_logger(), "Goal succeeded. lambda");
+          RCLCPP_INFO(this->get_logger(), "Goal succeeded. with code %d", wrapped_result.result->code);
+          RCLCPP_INFO(this->get_logger(), "Reasoner output is:\n%s", wrapped_result.result->std_output.c_str());
           break;
         case rclcpp_action::ResultCode::ABORTED:
           RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
@@ -267,13 +271,6 @@ private:
           RCLCPP_ERROR(this->get_logger(), "Unknown result code");
           return;
       }
-      std::stringstream ss;
-      ss << "Result received: ";
-      //for (auto number : result.result->sequence) {
-      //  ss << number << " ";
-      //}
-      RCLCPP_INFO(this->get_logger(), ss.str().c_str());
-      RCLCPP_INFO(this->get_logger(), result.result.c_str());
       rclcpp::shutdown();
     };
     this->query_reasoner_action_client_ptr->async_send_goal(goal_msg, send_goal_options);
