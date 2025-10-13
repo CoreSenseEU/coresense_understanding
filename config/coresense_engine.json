@@ -1,41 +1,40 @@
 {
-  "name": "understanding_system",
+  "name": "understanding_system_engine",
   "inputs": [
     {
-      "name": "query",
-      "formalism": "string_tptp",
-      "requirements": [
-        {
-          "name": "first_requirement",
-          "datatype": "integer",
-          "value_range": "1-5"
-        },
-        {
-          "name": "second_requirement",
-          "datatype": "float",
-          "value_range": "< 0.3"
-        }
-      ]
+      "name": "query_template",
+      "formalism": "understanding_action_request",
+      "concepts": [],
+      "representation_classes": ["tptp_tff_rc", "logic_rc"],
+      "requirements": [],
+      "creator": ""
     }
   ],
   "engine_output": {
-    "name": "solution",
-    "formalism" : "string_tptp",
+    "name": "bt_xml_modelet",
+    "formalism" : "understanding_action_response",
+    "concepts": [],
+    "representation_classes": ["behaviour_tree_rc", "plan_rc"],
     "properties": [
       {
-        "name": "some_property",
-        "datatype": "integer",
-        "value": "2"
+        "name": "executable_property",
+        "datatype": "boolean_proptype",
+        "value": "true"
       }
     ]
   },
+  "transit_properties": [],
   "time_delay": 5,
   "energy_cost": 0.0005,
-  "resources_used": [],
+  "resources_consumed": [],
   "resources_blocked": [
     {
-      "name": "cpu",
+      "name": "cpu_resource",
       "percentage": 0.5
+    },
+    {
+      "name": "memory_resource",
+      "percentage": 0.001
     }
   ]
 }
