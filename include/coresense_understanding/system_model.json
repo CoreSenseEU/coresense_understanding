@@ -1,0 +1,72 @@
+{
+  engines: {
+    "example_action": {
+      "type": "action",
+      "id": "/example_action",
+      "input": [
+        {
+          //ros msg
+        },
+        {
+          //ros msg
+        }
+      ],
+      "output": {
+        //ros msg
+      },
+      "energy_cost": "5kWh",
+      "time_delay": "50ms",
+    },
+    "drone_state_estimation_engine": {
+      "type": "service",
+      "id": "/we_engine",
+      "input": [
+        {
+          //ros msg
+        },
+        {
+          //ros msg
+        }
+      ],
+      "output": {
+        //ros msg
+      },
+      "energy_cost": "5kWh",
+      "time_delay": "50ms",
+    },
+    "drone_state_estimation_engine": {
+      "type": "service",
+      "id": "/drone_state_estimation_engine",
+      "input": [
+        {
+          //ros msg
+        },
+        {
+          //ros msg
+        }
+      ],
+      "output": {
+        //ros msg
+      },
+      "energy_cost": "5kWh",
+      "time_delay": "50ms",
+    },
+    "drone_state_evolution_estimation_engine": {
+      "type": "service",
+      "id": "/drone_state_evolution_estimation_engine",
+      "input": [
+        {
+          //ros msg
+        },
+        {
+          //ros msg
+        }
+      ],
+      "output": {
+        //ros msg
+      },
+      "energy_cost": "5kWh",
+      "time_delay": "50ms",
+    },
+  }
+}

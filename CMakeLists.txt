@@ -24,22 +24,60 @@ find_package(rclpy REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(tinyxml2_vendor REQUIRED)
 find_package(nlohmann_json_schema_validator_vendor REQUIRED)
+ 
+# remove warnings
+add_definitions(-w) 
+
+
+include_directories(include)
+
+add_library(theory STATIC src/theory.cpp)
+add_library(model STATIC src/model.cpp)
+add_library(agent_model STATIC src/agent_model.cpp)
+add_library(understanding_graph STATIC src/understanding_graph.cpp)
+add_library(vampire_interface STATIC src/vampire_interface.cpp)
+
+
 
 add_executable(understanding_system_node src/coresense_understanding.cpp)
+
 
 target_include_directories(understanding_system_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 target_compile_features(understanding_system_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
+target_link_libraries(
+  model
+  ${nlohmann_json_schema_validator_vendor_TARGETS}
+  )
+  
+target_link_libraries(agent_model
+  model
+  ${nlohmann_json_schema_validator_vendor_TARGETS}
+  )
+  
+target_link_libraries(understanding_graph
+  uuid
+  )
+  
+target_link_libraries(vampire_interface
+  understanding_graph
+  tinyxml2::tinyxml2
+  )
+  
+
+
 target_link_libraries(understanding_system_node PUBLIC
   ${coresense_msgs_TARGETS}
+  agent_model
+  theory
+  understanding_graph
+  vampire_interface
   ament_index_cpp::ament_index_cpp
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
-  ${nlohmann_json_schema_validator_vendor_TARGETS}
-  tinyxml2::tinyxml2
-  uuid
+  
   )
 
 ament_python_install_package(${PROJECT_NAME})
