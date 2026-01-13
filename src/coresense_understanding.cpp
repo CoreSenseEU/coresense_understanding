@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <filesystem>
 #include <exception>
 
@@ -48,7 +49,7 @@ public:
   UnderstandingSystemNode() : Node("understanding_system_node") {
     set_coresense_parameter();
     if (true) {
-      query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/vampire");
+      query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/query_reasoner");
       start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/start_session");
       add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
       list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/list_session");
@@ -74,7 +75,7 @@ public:
     //test_understanding_service_server_ptr = create_service<coresense_msgs::srv::TestUnderstanding>("/understanding/run_test", std::bind(&UnderstandingSystemNode::test_understanding, this, std::placeholders::_1, std::placeholders::_2));
     //test_reasoner();
     analyse_ros_system();
-    if (true) {
+    if (false) {
       std::string theo = theory_reader.get_theories();
       std::ofstream out0("/home/alex/plansys2_ws/theory.tff");
       out0 << theo;
@@ -157,21 +158,30 @@ private:
     agent_model.create_engine_relations();
   }
   
-  void start_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::StartSession>> service,
+  void start_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::StartSession>> start_session_server_ptr,
                const std::shared_ptr<rmw_request_id_t> request_header,
-               const std::shared_ptr<coresense_msgs::srv::StartSession::Request> request) {
+               const std::shared_ptr<coresense_msgs::srv::StartSession::Request> incoming_request) {
     // special service that can call a service
-    auto async_cb = [service, request_header, request,this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture future) {
-      (void)request;
-      coresense_msgs::srv::StartSession::Response response;
-      response.session_id = future.get()->session_id;
-      //add_to_session(response.session_id, get_theories());
-      //add_to_session(response.session_id, agent_model);
-      service->send_response(*request_header, response);
-      RCLCPP_INFO(get_logger(), "Created Session %s", response.session_id.c_str());
+    auto start_session_cb = [start_session_server_ptr, request_header, incoming_request, this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
+      //(void)start_session_request;
+      std::stringstream logic;
+      logic << this->theory_reader.get_theories();
+      logic << this->agent_model.model;
+      auto add_to_session_request = std::make_shared<coresense_msgs::srv::AddToSession::Request>();
+      add_to_session_request->tptp = logic.str();
+      add_to_session_request->session_id = start_session_future.get()->session_id;
+      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
+        //(void)add_to_session_request;
+        coresense_msgs::srv::StartSession::Response start_session_response;
+        start_session_response.session_id = add_to_session_request->session_id;
+        start_session_server_ptr->send_response(*request_header, start_session_response);
+        RCLCPP_INFO(get_logger(), "Created Session %s", start_session_response.session_id.c_str());
+      };
+      add_to_session_client_ptr->async_send_request(add_to_session_request, add_to_session_cb);
+
     };
-    auto request_inner = std::make_shared<coresense_msgs::srv::StartSession::Request>();
-    start_session_client_ptr->async_send_request(request_inner, async_cb);
+    auto start_session_request = std::make_shared<coresense_msgs::srv::StartSession::Request>();
+    start_session_client_ptr->async_send_request(start_session_request, start_session_cb);
   }
 
   void add_to_session(std::string session_id, std::string theory) {
@@ -239,9 +249,6 @@ private:
     ss << modelet << std::endl;
     ss << ").";
     std::string query = ss.str();
-    // TODO load reasoner session with context theories
-    add_to_session(goal->session_id, theory_reader.get_theories());
-    add_to_session(goal->session_id, agent_model.model);
 
     // manage understanding process
     // - manage used theories
@@ -267,12 +274,15 @@ private:
   }
 
   std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<coresense_msgs::action::QueryReasoner>>> send_goal(std::string session_id, std::string query, std::string config) {
+    RCLCPP_INFO(get_logger(), "Looking for Reasoner to send query.");
 
     //std::cout << "waiting for reasoner" << std::endl;
     if (!query_reasoner_action_client_ptr->wait_for_action_server()) {
+      RCLCPP_WARN(get_logger(), "Failed waiting for reasoner.");
       //need to throw some exeception here to denote the failing wait
       return std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<coresense_msgs::action::QueryReasoner>>>();
     }
+    RCLCPP_INFO(get_logger(), "Found Reasoner.");
     //std::cout << "have reasoner" << std::endl;
 
     auto goal_msg = QueryReasonerAction::Goal();

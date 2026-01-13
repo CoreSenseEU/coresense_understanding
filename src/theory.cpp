@@ -1,7 +1,10 @@
 #include <iostream>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <regex>
+
+#include "rclcpp/rclcpp.hpp"
 
 #include <coresense_understanding/theory.hpp>
 #include <coresense_understanding/model.hpp>
@@ -113,10 +116,10 @@ void TheoryReader::get_theory2(Theory &t, std::string &body) {
       if (std::filesystem::exists(file_path)) {
         get_theory2(theories[file_path.string()], body);
       } else {
-        //RCLCPP_WARN(get_logger(), "get_theory: Path does not exist.\n Missing: %s,\n Imported by: %s", file_path.string().c_str(), t.id.string().c_str());
+        RCLCPP_WARN(rclcpp::get_logger("understanding_system_node"), "get_theory: Path does not exist.\n Missing: %s,\n Imported by: %s", file_path.string().c_str(), t.id.string().c_str());
       }
     }
-    //RCLCPP_INFO(get_logger(), "get_theory: Adding Theory:\n%s", t.id.string().c_str());
+    RCLCPP_INFO(rclcpp::get_logger("understanding_system_node"), "get_theory: Adding Theory:\n%s", t.id.string().c_str());
     body += t.content;
     t.added = true;
   }

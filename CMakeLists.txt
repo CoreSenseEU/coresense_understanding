@@ -67,6 +67,9 @@ target_link_libraries(vampire_interface
   )
   
 
+  target_link_libraries(theory
+  rclcpp::rclcpp
+  )
 
 target_link_libraries(understanding_system_node PUBLIC
   ${coresense_msgs_TARGETS}
@@ -77,7 +80,6 @@ target_link_libraries(understanding_system_node PUBLIC
   ament_index_cpp::ament_index_cpp
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
-  
   )
 
 ament_python_install_package(${PROJECT_NAME})
