@@ -8,7 +8,8 @@ It uses existing models as well as model-modification skills (engines) wrapped i
 ### Installation
 
 ```bash
-git clone https://github.com/CoreSenseEU/coresense_understanding src/coresense_understanding
+git clone --recursive https://github.com/CoreSenseEU/coresense_understanding src/coresense_understanding
+git clone https://github.com/CoreSenseEU/coresense_msgs src/coresense_msgs
 git clone https://github.com/CoreSenseEU/coresense_vampire src/coresense_vampire
 sudo apt install -y --no-install-recommends ros-jazzy-tinyxml2-vendor ros-jazzy-nlohmann-json-schema-validator-vendor
 colcon build --symlink-install
@@ -18,6 +19,8 @@ source install/setup.bash
 #### Dependencies
 - tinyxml2_vendor
 - nlohmann_json_schema_validator_vendor
+- [understanding-logic](https://github.com/CoreSenseEU/understanding-logic)
+- [coresense_msgs](https://github.com/CoreSenseEU/coresense_msgs)
 - [coresense_vampire](https://github.com/CoreSenseEU/coresense_vampire)
 - [triplestar_kb](https://github.com/kas-lab/triplestar_kb)
 
