@@ -24,6 +24,8 @@
 #include "coresense_understanding/theory.hpp"
 #include "coresense_understanding/vampire_interface.hpp"
 
+#include "triplestar_msgs/srv/sparql_query.hpp"
+#include "triplestar_msgs/srv/select_query.hpp"
 
 using namespace std::chrono_literals;
 namespace ns_vampire = coresense::understanding::interfaces::vampire;
@@ -49,6 +51,8 @@ public:
   UnderstandingSystemNode() : Node("understanding_system_node") {
     set_coresense_parameter();
     if (true) {
+      query_triplestar_kb_ptr = create_client<triplestar_msgs::srv::SPARQLQuery>("/triplestar_core/query");
+      get_modelets_client_ptr = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar_core/query_services/get_modelets");
       query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/query_reasoner");
       start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/start_session");
       add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
@@ -62,6 +66,21 @@ public:
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/add_knowledge service not available, waiting again...");
       }
       RCLCPP_INFO(get_logger(), "Connected to vampire_node");
+      while (!get_modelets_client_ptr->wait_for_service(1s) ) {
+        if (!rclcpp::ok()) {
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for triplestar get_modelets service. Exiting.");
+          return; //TODO: find better way to kill this.
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar_core/query_services/get_modelets service not available, waiting again...");
+      }
+      while (!query_triplestar_kb_ptr->wait_for_service(1s) ) {
+        if (!rclcpp::ok()) {
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for triplestar query service. Exiting.");
+          return; //TODO: find better way to kill this.
+        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar_core/query service not available, waiting again...");
+      }
+    this->get_modelets();
     understand_action_server_ptr = rclcpp_action::create_server<UnderstandAction>(
       this,
       "/understanding/understand",
@@ -104,6 +123,8 @@ private:
   rclcpp_action::Client<QueryReasonerAction>::SharedPtr query_reasoner_action_client_ptr;
   rclcpp::Service<coresense_msgs::srv::StartSession>::SharedPtr start_session_server_ptr;
   //rclcpp::Service<coresense_msgs::srv::TestUnderstanding>::SharedPtr test_understanding_service_server_ptr;
+  rclcpp::Client<triplestar_msgs::srv::SPARQLQuery>::SharedPtr query_triplestar_kb_ptr;
+  rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedPtr get_modelets_client_ptr;
   rclcpp::Client<coresense_msgs::srv::StartSession>::SharedPtr start_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedPtr add_to_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::ListSession>::SharedPtr list_session_client_ptr;
@@ -130,8 +151,74 @@ private:
   }
   
   void read_logic() {
-    
     theory_reader.read_package_logic(ament_index_cpp::get_package_share_directory("coresense_understanding"), "understanding-logic/tff/model");
+  }
+
+  std::string split(std::string iri) {
+    auto const pos = iri.find_last_of('#');
+    return iri.substr(pos + 1);
+  }
+  
+  void get_modelets() {
+    auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
+    //get_modelets_request->query = query;
+    auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
+      //RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Got modelets:\n%s", get_modelets_future.get()->result.c_str());
+      std::stringstream ss;
+      ss << get_modelets_future.get()->result;
+      nlohmann::json result = nlohmann::json::parse(ss);
+      std::map<std::string, coresense::understanding::model::Modelet> map;
+      for (nlohmann::json binding : result["results"]["bindings"]) {
+        std::string modelet = split(binding["modelet"]["value"].get<std::string>());
+        std::string formalism = split(binding["formalism"]["value"].get<std::string>());
+        //TODO combine bindings of the same modelet.
+        if (map.find(modelet) == map.end()) {
+          coresense::understanding::model::Modelet m;
+          m.formalism = split(binding["formalism"]["value"].get<std::string>());
+          m.name = split(binding["modelet"]["value"].get<std::string>());
+          //binding["formalism"]["value"].get_to(m.formalism);
+          //binding["modelet"]["value"].get_to(m.name);
+          map[modelet] = m;
+          //RCLCPP_INFO(get_logger(), "Adding modelet %s, using formalism %s", m.name.c_str(), m.formalism.c_str());
+        }
+
+        if (binding.find("concept") != binding.end()) {
+          std::string concept = split(binding["concept"]["value"].get<std::string>());
+          if  (!concept.empty()) {
+            map[modelet].concepts.insert(concept);
+            //RCLCPP_INFO(get_logger(), "Adding concept %s to modelet %s", concept.c_str(), modelet.c_str());
+          }
+        }
+        if (binding.find("representationClass") != binding.end()) {
+          std::string representation_class = split(binding["representationClass"]["value"].get<std::string>());
+          if (!representation_class.empty()) {
+            map[modelet].representation_classes.insert(representation_class);
+            //RCLCPP_INFO(get_logger(), "Adding representation class %s to modelet %s", representation_class.c_str(), modelet.c_str());
+          }
+        }
+        if (binding.find("property") != binding.end()) {
+          coresense::understanding::model::Property property;
+          property.name = split(binding["propertyName"]["value"].get<std::string>());
+          property.datatype = split(binding["propertyType"]["value"].get<std::string>());
+          property.value = split(binding["propertyValue"]["value"].get<std::string>());
+          //binding["propertyName"]["value"].get_to(property.name);
+          //binding["propertyType"]["value"].get_to(property.datatype);
+          //binding["propertyValue"]["value"].get_to(property.value);
+          map[modelet].properties.insert(property);
+          //RCLCPP_INFO(get_logger(), "Adding property %s to modelet %s", property.name.c_str(), modelet.c_str());
+        }
+        
+          
+        //RCLCPP_INFO(get_logger(), "Got modelet %s, in formalism %s, modelling concept %s", modelet.c_str(), formalism.c_str(), concept.c_str());
+
+      }
+      //TODO: convert returned modelet json into tptp
+      //TODO: insert modelet information into vampire state
+      for (auto & [name, modelet] : map) {
+        RCLCPP_INFO(get_logger(), "Added modelet %s from knowledge base:\n%s", name.c_str(), modelet.to_tff().c_str());
+      }
+    };
+    get_modelets_client_ptr->async_send_request(get_modelets_request, get_modelets_cb);
   }
   
   void analyse_ros_system() {

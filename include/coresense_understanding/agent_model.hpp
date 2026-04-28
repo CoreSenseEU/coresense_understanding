@@ -10,7 +10,7 @@
 namespace coresense::understanding::agent_model {
 class AgentModel {
 private:
-  std::vector<coresense::understanding::model::Engine> engines;
+  std::set<coresense::understanding::model::Engine> engines;
   std::map<std::string, std::set<std::string>> distinct_instances {
     {"engine", std::set<std::string>()},
     {"template", std::set<std::string>()},

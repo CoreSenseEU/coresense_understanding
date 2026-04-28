@@ -2,7 +2,7 @@
 
 namespace coresense::understanding::model {
 
-std::string create_relation_limit1(std::string relation, std::string individual, std::string set_klass,  std::list<std::string> set) {
+std::string create_relation_limit1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
   ss << "tff(axiom_" << individual << "_" << relation << "_existence, axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
@@ -18,7 +18,7 @@ std::string create_relation_limit1(std::string relation, std::string individual,
   return ss.str();
 }
 
-std::string create_relation_exist1(std::string relation, std::string individual, std::string set_klass,  std::list<std::string> set) {
+std::string create_relation_exist1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
   ss << "tff(axiom_" << individual << "_" << relation << "_existence, axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
@@ -73,6 +73,12 @@ std::string create_has_no_relation2(std::string relation, std::string individual
   return ss.str();
 }
 
+//void from_json(const nlohmann::json& j, SelectQuery& q) {
+//  j.at("name").get_to(r.name);
+//  j.at("datatype").get_to(r.datatype);
+//  j.at("value_range").get_to(r.value_range);
+//}
+
 
 void from_json(const nlohmann::json& j, Requirement& r) {
   j.at("name").get_to(r.name);
@@ -124,6 +130,13 @@ void from_json(const nlohmann::json& j, Engine& e) {
 }
 
 
+std::string Property::to_tff() {
+  std::stringstream property_decl, property_type, property_value, output;
+  property_type << "tff(" << name << "_has_type, axiom, type_of_property(" << name << ") = " << datatype << ").\n";
+  property_value << "tff(" << name << "_has_value, axiom, has_value(" << name << ", " << value << ")).\n";
+  output << property_decl.str() << property_type.str() << property_value.str();
+  return output.str();
+}
 
 std::string Requirement::to_tff() {
   std::stringstream req_decl, req_type, req_value_range, output;
@@ -165,6 +178,38 @@ std::string Template::to_tff() {
   return output.str();
 }
 
+std::string Modelet::to_tff() {
+  std::stringstream output, req_set;
+  output << "tff(" << name << "_formalism, axiom,\n  formalism_of_modelet(" << name << ") = " << formalism << "\n).\n";
+  if (representation_classes.empty()) {
+    output << create_has_no_relation1("modelet_has_representation_class", name, "representation_class");
+  } else { // modelet has representation_classes
+    output << create_relation_limit1("modelet_has_representation_class", name, "representation_class", representation_classes);
+  }
+  if (concepts.empty()) {
+    output << create_has_no_relation1("modelet_has_concept", name, "concept");
+  } else { // modelet has concepts
+    output << create_relation_limit1("modelet_has_concept", name, "concept", concepts);
+  }
+  if (creator != "") {
+    output << "tff(" << name << "_modelet_has_creator, axiom,\n  modelet_has_creator(" << name << ", " << creator << ")\n).\n";
+  } else { // modelet has no creators
+    output << "tff(" << name << "_modelet_has_no_creator, axiom,\n  ~?[E: engine]:\n    modelet_has_creator(" << name << ", E)\n).\n";
+  }
+  // property 
+  if (properties.empty()) { // modelet has no properties
+    output << create_has_no_relation2("modelet_has_property", name, "property");
+  } else { // modelet has properties
+    std::set<std::string> property_names;
+    for (Property prop : properties) {
+      output << prop.to_tff();
+      property_names.insert(prop.name);
+    }
+    output << create_relation_exist2("is_property_of_m", name, "property", property_names);
+  }
+  return output.str();
+}
+
 std::string Engine::to_tff() {
   std::stringstream output, templates;
   output << "tff(" << name << "_imparts_formalism, axiom,\n  output_modelet_formalism(" << name << ") = " << engine_output.formalism << "\n).\n";
@@ -191,9 +236,9 @@ std::string Engine::to_tff() {
     output << create_has_no_relation1("engine_imparts_concept", name, "concept");
   }
   if (!engine_output.properties.empty()) {
-    std::list<std::string> properties;
+    std::set<std::string> properties;
     for (Property property : engine_output.properties) {
-      properties.push_back(property.name);
+      properties.insert(property.name);
     }
     output << create_relation_exist1("engine_imparts_property", name, "property", properties);
   } else { // engine imparts no propertys

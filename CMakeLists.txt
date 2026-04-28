@@ -19,6 +19,7 @@ find_package(ament_index_cpp REQUIRED)
 # find_package(<dependency> REQUIRED)
 find_package(coresense_vampire REQUIRED)
 find_package(coresense_msgs REQUIRED)
+find_package(triplestar_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(rclcpp_action REQUIRED)
@@ -73,6 +74,7 @@ target_link_libraries(vampire_interface
 
 target_link_libraries(understanding_system_node PUBLIC
   ${coresense_msgs_TARGETS}
+  ${triplestar_msgs_TARGETS}
   agent_model
   theory
   understanding_graph

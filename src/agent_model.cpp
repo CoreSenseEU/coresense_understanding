@@ -3,7 +3,7 @@
 
 namespace coresense::understanding::agent_model {
 
-std::string create_relation_limit2(std::string relation, std::string individual, std::string set_klass,  std::list<std::string> list) {
+std::string create_relation_limit2(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
   ss << "tff(axiom_" << individual << "_" << relation << ", axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
@@ -11,7 +11,7 @@ std::string create_relation_limit2(std::string relation, std::string individual,
      << "    " << relation << "(X, " << individual << ")" << std::endl
      << "    =>" << std::endl
      << "    (";
-  for (std::string name : list) {
+  for (std::string name : set) {
     ss << std::endl <<"      (X = " << name << ")" << std::endl << "      |"; 
   }
   ss.seekp(-3, ss.cur);
@@ -23,7 +23,7 @@ std::string create_relation_limit2(std::string relation, std::string individual,
 void AgentModel::create_engine_model(std::string node_name, std::string engine_annotation) {
     nlohmann::json j = nlohmann::json::parse(engine_annotation);
     auto engine = j.get<coresense::understanding::model::Engine>();
-    engines.push_back(engine);
+    engines.insert(engine);
 //    } catch (const json::parse_error& e) {
 //      RCLCPP_ERROR(get_logger(), "Could not read Node %s annotation. Caught error: %s", node_name.c_str(), e.what());
 //    } catch (const json::type_error& e) {
@@ -171,42 +171,42 @@ void AgentModel::create_engine_relations() {
   // These encode the property->engine direction 1->n
   for (const auto& [requirement, templates] : templates_requirement) {
     if (!templates.empty()) {
-      std::list<std::string> li(templates.begin(), templates.end());
+      std::set<std::string> li(templates.begin(), templates.end());
       all_relations << coresense::understanding::model::create_relation_limit1("is_part_of", requirement, "template", li);
     }
   }
   for (const auto& [rc, engines] : imparted_rcs) {
     if (!engines.empty()) {
       //TODO this is wrongly filled because it does not collect all the engine per rc ALEX
-      std::list<std::string> li(engines.begin(), engines.end());
+      std::set<std::string> li(engines.begin(), engines.end());
       all_relations << create_relation_limit2("engine_imparts_representation_class", rc, "engine", li);
     }
   }
   // create concept  -> engine relation
   for (const auto& [concept, engines] : imparted_concepts) {
     if (!engines.empty()) {
-      std::list<std::string> li(engines.begin(), engines.end());
+      std::set<std::string> li(engines.begin(), engines.end());
       all_relations << create_relation_limit2("engine_imparts_concept", concept, "engine", li);
     }
   }
   // create concept  -> engine relation
   for (const auto& [property, engines] : imparted_properties) {
     if (!engines.empty()) {
-      std::list<std::string> li(engines.begin(), engines.end());
+      std::set<std::string> li(engines.begin(), engines.end());
       all_relations << create_relation_limit2("engine_imparts_property", property, "engine", li);
     }
   }
   // create representation_class -> template relation
   for (const auto& [rc, templates] : templates_rc) {
     if (!templates.empty()) {
-      std::list<std::string> li(templates.begin(), templates.end());
+      std::set<std::string> li(templates.begin(), templates.end());
       all_relations << create_relation_limit2("template_has_representation_class_requirement", rc, "template", li);
     }
   }
   // create concept -> template relation
   for (const auto& [concept, templates] : templates_concept) {
     if (!templates.empty()) {
-      std::list<std::string> li(templates.begin(), templates.end());
+      std::set<std::string> li(templates.begin(), templates.end());
       all_relations << create_relation_limit2("template_has_concept_requirement", concept, "template", li);
     }
   }
