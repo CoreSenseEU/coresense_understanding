@@ -217,6 +217,7 @@ void AgentModel::create_engine_relations() {
   //out4.close();
   //add_knowledge("rest_engine_relations", engine_relations.str());
   model = all_relations.str();
+  last_update = time(NULL);
 }
 
 

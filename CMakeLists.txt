@@ -35,6 +35,7 @@ include_directories(include)
 add_library(theory STATIC src/theory.cpp)
 add_library(model STATIC src/model.cpp)
 add_library(agent_model STATIC src/agent_model.cpp)
+add_library(knowledge_model STATIC src/knowledge_model.cpp)
 add_library(understanding_graph STATIC src/understanding_graph.cpp)
 add_library(vampire_interface STATIC src/vampire_interface.cpp)
 
@@ -58,6 +59,11 @@ target_link_libraries(agent_model
   ${nlohmann_json_schema_validator_vendor_TARGETS}
   )
   
+target_link_libraries(knowledge_model
+  model
+  ${nlohmann_json_schema_validator_vendor_TARGETS}
+  )
+
 target_link_libraries(understanding_graph
   uuid
   )
@@ -76,6 +82,7 @@ target_link_libraries(understanding_system_node PUBLIC
   ${coresense_msgs_TARGETS}
   ${triplestar_msgs_TARGETS}
   agent_model
+  knowledge_model
   theory
   understanding_graph
   vampire_interface

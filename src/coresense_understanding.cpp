@@ -20,9 +20,11 @@
 
 #include "coresense_understanding/model.hpp"
 #include "coresense_understanding/agent_model.hpp"
+#include "coresense_understanding/knowledge_model.hpp"
 #include "coresense_understanding/understanding_graph.hpp"
 #include "coresense_understanding/theory.hpp"
 #include "coresense_understanding/vampire_interface.hpp"
+#include "coresense_understanding/session.hpp"
 
 #include "triplestar_msgs/srv/sparql_query.hpp"
 #include "triplestar_msgs/srv/select_query.hpp"
@@ -80,7 +82,6 @@ public:
         }
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar_core/query service not available, waiting again...");
       }
-    this->get_modelets();
     understand_action_server_ptr = rclcpp_action::create_server<UnderstandAction>(
       this,
       "/understanding/understand",
@@ -93,7 +94,7 @@ public:
     start_session_server_ptr = create_service<coresense_msgs::srv::StartSession>("/understanding/start_session", std::bind(&UnderstandingSystemNode::start_session, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     //test_understanding_service_server_ptr = create_service<coresense_msgs::srv::TestUnderstanding>("/understanding/run_test", std::bind(&UnderstandingSystemNode::test_understanding, this, std::placeholders::_1, std::placeholders::_2));
     //test_reasoner();
-    analyse_ros_system();
+    update_models();
     if (false) {
       std::string theo = theory_reader.get_theories();
       std::ofstream out0("/home/alex/plansys2_ws/theory.tff");
@@ -130,6 +131,7 @@ private:
   rclcpp::Client<coresense_msgs::srv::ListSession>::SharedPtr list_session_client_ptr;
   rclcpp_action::Server<UnderstandAction>::SharedPtr understand_action_server_ptr;
   coresense::understanding::agent_model::AgentModel agent_model;
+  coresense::understanding::knowledge_model::KnowledgeModel knowledge_model;
   ns_theory::TheoryReader theory_reader{std::filesystem::path(ament_index_cpp::get_package_share_directory("coresense_understanding"))};
   ns_vampire::VampireInterface vampire_interface;
 
@@ -154,69 +156,13 @@ private:
     theory_reader.read_package_logic(ament_index_cpp::get_package_share_directory("coresense_understanding"), "understanding-logic/tff/model");
   }
 
-  std::string split(std::string iri) {
-    auto const pos = iri.find_last_of('#');
-    return iri.substr(pos + 1);
-  }
   
-  void get_modelets() {
+  void get_modelet_snapshot() {
+    RCLCPP_INFO(get_logger(), "Creating knowledge model.");
     auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
-    //get_modelets_request->query = query;
     auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
-      //RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Got modelets:\n%s", get_modelets_future.get()->result.c_str());
-      std::stringstream ss;
-      ss << get_modelets_future.get()->result;
-      nlohmann::json result = nlohmann::json::parse(ss);
-      std::map<std::string, coresense::understanding::model::Modelet> map;
-      for (nlohmann::json binding : result["results"]["bindings"]) {
-        std::string modelet = split(binding["modelet"]["value"].get<std::string>());
-        std::string formalism = split(binding["formalism"]["value"].get<std::string>());
-        //TODO combine bindings of the same modelet.
-        if (map.find(modelet) == map.end()) {
-          coresense::understanding::model::Modelet m;
-          m.formalism = split(binding["formalism"]["value"].get<std::string>());
-          m.name = split(binding["modelet"]["value"].get<std::string>());
-          //binding["formalism"]["value"].get_to(m.formalism);
-          //binding["modelet"]["value"].get_to(m.name);
-          map[modelet] = m;
-          //RCLCPP_INFO(get_logger(), "Adding modelet %s, using formalism %s", m.name.c_str(), m.formalism.c_str());
-        }
-
-        if (binding.find("concept") != binding.end()) {
-          std::string concept = split(binding["concept"]["value"].get<std::string>());
-          if  (!concept.empty()) {
-            map[modelet].concepts.insert(concept);
-            //RCLCPP_INFO(get_logger(), "Adding concept %s to modelet %s", concept.c_str(), modelet.c_str());
-          }
-        }
-        if (binding.find("representationClass") != binding.end()) {
-          std::string representation_class = split(binding["representationClass"]["value"].get<std::string>());
-          if (!representation_class.empty()) {
-            map[modelet].representation_classes.insert(representation_class);
-            //RCLCPP_INFO(get_logger(), "Adding representation class %s to modelet %s", representation_class.c_str(), modelet.c_str());
-          }
-        }
-        if (binding.find("property") != binding.end()) {
-          coresense::understanding::model::Property property;
-          property.name = split(binding["propertyName"]["value"].get<std::string>());
-          property.datatype = split(binding["propertyType"]["value"].get<std::string>());
-          property.value = split(binding["propertyValue"]["value"].get<std::string>());
-          //binding["propertyName"]["value"].get_to(property.name);
-          //binding["propertyType"]["value"].get_to(property.datatype);
-          //binding["propertyValue"]["value"].get_to(property.value);
-          map[modelet].properties.insert(property);
-          //RCLCPP_INFO(get_logger(), "Adding property %s to modelet %s", property.name.c_str(), modelet.c_str());
-        }
-        
-          
-        //RCLCPP_INFO(get_logger(), "Got modelet %s, in formalism %s, modelling concept %s", modelet.c_str(), formalism.c_str(), concept.c_str());
-
-      }
-      //TODO: convert returned modelet json into tptp
-      //TODO: insert modelet information into vampire state
-      for (auto & [name, modelet] : map) {
-        RCLCPP_INFO(get_logger(), "Added modelet %s from knowledge base:\n%s", name.c_str(), modelet.to_tff().c_str());
-      }
+      this->knowledge_model.create_knowledge_model(get_modelets_future.get()->result);
+      RCLCPP_INFO(get_logger(), "Created knowledge model.");
     };
     get_modelets_client_ptr->async_send_request(get_modelets_request, get_modelets_cb);
   }
@@ -224,17 +170,20 @@ private:
   void analyse_ros_system() {
     RCLCPP_INFO(get_logger(), "Waiting for 2.5s");
     rclcpp::sleep_for(std::chrono::milliseconds(2500));
-    RCLCPP_INFO(get_logger(), "Waiting done");
+    RCLCPP_INFO(get_logger(), "Creating agent model.");
     for (std::string node_name : get_node_names()) {
-      if (node_name.rfind("/_ros2cli_", 0) != 0) {
+      if ((node_name.rfind("/_ros2cli_", 0) != 0) && (node_name.rfind("/launch_ros", 0) != 0)) {
         RCLCPP_INFO(get_logger(), "Scanning node %s", node_name.c_str());
         auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(this, node_name);
-        try {
-        
+        try {       
           std::string engine_annotation = parameters_client->get_parameter<std::string>("coresense_engine");
-          RCLCPP_INFO(get_logger(), "Creating engine model for %s", node_name.c_str());
-          agent_model.create_engine_model(node_name, engine_annotation);
-          RCLCPP_INFO(get_logger(), "Created engine model for %s", node_name.c_str());
+          if (engine_annotation.length() > 0) {
+            RCLCPP_INFO(get_logger(), "Creating engine model for %s", node_name.c_str());
+            agent_model.create_engine_model(node_name, engine_annotation);
+            RCLCPP_INFO(get_logger(), "Created engine model for %s", node_name.c_str());
+          } else {
+            RCLCPP_INFO(get_logger(), "Node %s is not annotated", node_name.c_str());
+          }
         } catch (std::runtime_error& e) {
           RCLCPP_WARN(get_logger(), "Node %s produced error %s", node_name.c_str(), e.what());
         } catch (std::exception &e ) {
@@ -243,22 +192,34 @@ private:
       }
     }
     agent_model.create_engine_relations();
+    RCLCPP_INFO(get_logger(), "Created agent model.");
+  }
+
+
+  void update_models() {
+    analyse_ros_system();
+    get_modelet_snapshot();
   }
   
   void start_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::StartSession>> start_session_server_ptr,
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<coresense_msgs::srv::StartSession::Request> incoming_request) {
     // special service that can call a service
-    auto start_session_cb = [start_session_server_ptr, request_header, incoming_request, this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
+    auto start_session_cb = [start_session_server_ptr, request_header, incoming_request,  this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
       //(void)start_session_request;
       std::stringstream logic;
+      coresense::understanding::session::Session session;
       logic << this->theory_reader.get_theories();
       logic << this->agent_model.model;
+      logic << this->knowledge_model.model;
       auto add_to_session_request = std::make_shared<coresense_msgs::srv::AddToSession::Request>();
       add_to_session_request->tptp = logic.str();
       add_to_session_request->session_id = start_session_future.get()->session_id;
-      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
-        //(void)add_to_session_request;
+      session.id = add_to_session_request->session_id;
+      session.start_time = time(NULL);
+      session.last_agent_update = agent_model.last_update;
+      session.last_knowledge_update = knowledge_model.last_update;
+      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, session, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
         coresense_msgs::srv::StartSession::Response start_session_response;
         start_session_response.session_id = add_to_session_request->session_id;
         start_session_server_ptr->send_response(*request_header, start_session_response);
