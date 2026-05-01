@@ -1,7 +1,7 @@
 #ifndef agent_model_hpp
 #define agent_model_hpp
 
-#include <ctime>
+#include <chrono>
 #include <list>
 #include <nlohmann/json.hpp>
 
@@ -27,7 +27,8 @@ private:
   };
 public:
   std::string model;
-  time_t last_update;
+  bool dirty;
+  std::chrono::time_point<std::chrono::system_clock> last_update;
   
   AgentModel() {};
   void create_engine_model(std::string node_name, std::string engine_annotation);

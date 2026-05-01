@@ -10,6 +10,8 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
+#include "std_srvs/srv/trigger.hpp"
+
 #include "coresense_msgs/action/query_reasoner.hpp"
 #include "coresense_msgs/action/understand.hpp"
 #include "coresense_msgs/srv/test_understanding.hpp"
@@ -92,6 +94,8 @@ public:
     }
     read_logic();
     start_session_server_ptr = create_service<coresense_msgs::srv::StartSession>("/understanding/start_session", std::bind(&UnderstandingSystemNode::start_session, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    mark_agent_server_ptr = create_service<std_srvs::srv::Trigger>("mark_agent_model_dirty", std::bind(&UnderstandingSystemNode::mark_agent_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    mark_knowledge_server_ptr = create_service<std_srvs::srv::Trigger>("/understanding/mark_knowledge_model_dirty", std::bind(&UnderstandingSystemNode::mark_knowledge_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     //test_understanding_service_server_ptr = create_service<coresense_msgs::srv::TestUnderstanding>("/understanding/run_test", std::bind(&UnderstandingSystemNode::test_understanding, this, std::placeholders::_1, std::placeholders::_2));
     //test_reasoner();
     update_models();
@@ -123,6 +127,8 @@ public:
 private:
   rclcpp_action::Client<QueryReasonerAction>::SharedPtr query_reasoner_action_client_ptr;
   rclcpp::Service<coresense_msgs::srv::StartSession>::SharedPtr start_session_server_ptr;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr mark_agent_server_ptr;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr mark_knowledge_server_ptr;
   //rclcpp::Service<coresense_msgs::srv::TestUnderstanding>::SharedPtr test_understanding_service_server_ptr;
   rclcpp::Client<triplestar_msgs::srv::SPARQLQuery>::SharedPtr query_triplestar_kb_ptr;
   rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedPtr get_modelets_client_ptr;
@@ -131,14 +137,19 @@ private:
   rclcpp::Client<coresense_msgs::srv::ListSession>::SharedPtr list_session_client_ptr;
   rclcpp_action::Server<UnderstandAction>::SharedPtr understand_action_server_ptr;
   coresense::understanding::agent_model::AgentModel agent_model;
+  std::chrono::seconds agent_model_update_interval = std::chrono::seconds(5);
   coresense::understanding::knowledge_model::KnowledgeModel knowledge_model;
+  std::chrono::seconds knowledge_model_update_interval = std::chrono::seconds(1);
   ns_theory::TheoryReader theory_reader{std::filesystem::path(ament_index_cpp::get_package_share_directory("coresense_understanding"))};
   ns_vampire::VampireInterface vampire_interface;
 
   std::map<rclcpp_action::GoalUUID, std::shared_ptr<UnderstandActionGoalHandle>> goals;
   std::stringstream knowledge;
+  std::map<std::string, coresense::understanding::session::Session> sessions;
 
   // Methods
+  
+
 
   void set_coresense_parameter() {
     const std::string path = ament_index_cpp::get_package_share_directory("coresense_understanding") + "/config/coresense_engine.json";
@@ -200,26 +211,47 @@ private:
     analyse_ros_system();
     get_modelet_snapshot();
   }
+
+  void mark_agent_model_dirty(std::shared_ptr<rclcpp::Service<std_srvs::srv::Trigger>> mark_agent_model_server_ptr,
+               const std::shared_ptr<rmw_request_id_t> request_header,
+               const std::shared_ptr<std_srvs::srv::Trigger::Request> incoming_request) {
+    agent_model.dirty = true;
+    std_srvs::srv::Trigger::Response response;
+    response.success = true;
+    response.message = "";
+    mark_agent_server_ptr->send_response(*request_header, response);
+  }
+  
+  void mark_knowledge_model_dirty(std::shared_ptr<rclcpp::Service<std_srvs::srv::Trigger>> mark_knowledge_model_server_ptr,
+               const std::shared_ptr<rmw_request_id_t> request_header,
+               const std::shared_ptr<std_srvs::srv::Trigger::Request> incoming_request) {
+    knowledge_model.dirty = true;
+    std_srvs::srv::Trigger::Response response;
+    response.success = true;
+    response.message = "";
+    mark_knowledge_server_ptr->send_response(*request_header, response);
+  }
   
   void start_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::StartSession>> start_session_server_ptr,
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<coresense_msgs::srv::StartSession::Request> incoming_request) {
     // special service that can call a service
     auto start_session_cb = [start_session_server_ptr, request_header, incoming_request,  this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
-      //(void)start_session_request;
+      std::string session_id = start_session_future.get()->session_id;
+      RCLCPP_INFO(get_logger(), "Creating Session %s", session_id.c_str());
+      sessions.emplace(session_id, coresense::understanding::session::Session(session_id));
+
       std::stringstream logic;
-      coresense::understanding::session::Session session;
+      //TODO refactor the next three lines for consistency and efficiency (session manager)
       logic << this->theory_reader.get_theories();
       logic << this->agent_model.model;
       logic << this->knowledge_model.model;
       auto add_to_session_request = std::make_shared<coresense_msgs::srv::AddToSession::Request>();
       add_to_session_request->tptp = logic.str();
-      add_to_session_request->session_id = start_session_future.get()->session_id;
-      session.id = add_to_session_request->session_id;
-      session.start_time = time(NULL);
-      session.last_agent_update = agent_model.last_update;
-      session.last_knowledge_update = knowledge_model.last_update;
-      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, session, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
+      add_to_session_request->session_id = session_id;
+      sessions[session_id].last_agent_update = agent_model.last_update;
+      sessions[session_id].last_knowledge_update = knowledge_model.last_update;
+      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
         coresense_msgs::srv::StartSession::Response start_session_response;
         start_session_response.session_id = add_to_session_request->session_id;
         start_session_server_ptr->send_response(*request_header, start_session_response);
@@ -254,10 +286,6 @@ private:
     }
   }
   
-  
-
-
-
 
 
   rclcpp_action::GoalResponse handle_goal(
@@ -297,11 +325,24 @@ private:
     ss << modelet << std::endl;
     ss << ").";
     std::string query = ss.str();
+    //check if understanding system theories are too old or known to have changed
+    coresense::understanding::session::Session session = sessions[goal->session_id];
+    std::chrono::time_point now = std::chrono::system_clock::now();
+    //TODO update vampire wrapper to support removing of theories, identifying theories by id
+    if ((agent_model.dirty) || (now > (agent_model.last_update + agent_model_update_interval))) {
+      analyse_ros_system();
+    }
+    if ((knowledge_model.dirty) || (now > (knowledge_model.last_update + knowledge_model_update_interval))) {
+      get_modelet_snapshot();
+    }
+    //check if session theories are too old
+    if (now > (agent_model.last_update + session.agent_model_max_age)) {
+      //TODO remove agent model from vampire and add new one
+    }
+    if (now > (knowledge_model.last_update + session.knowledge_model_max_age)) {
+      //TODO remove knowledge model from vampire and add new one
+    }
 
-    // manage understanding process
-    // - manage used theories
-    
-    //auto result = std::make_shared<UnderstandAction::Result>();
     std::string config = "";
     send_goal_from_action(goal->session_id, query, config, goal_handle);
     // return result

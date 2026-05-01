@@ -17,6 +17,7 @@ find_package(ament_index_cpp REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(coresense_vampire REQUIRED)
 find_package(coresense_msgs REQUIRED)
 find_package(triplestar_msgs REQUIRED)
@@ -35,6 +36,7 @@ include_directories(include)
 add_library(theory STATIC src/theory.cpp)
 add_library(model STATIC src/model.cpp)
 add_library(agent_model STATIC src/agent_model.cpp)
+add_library(session STATIC src/session.cpp)
 add_library(knowledge_model STATIC src/knowledge_model.cpp)
 add_library(understanding_graph STATIC src/understanding_graph.cpp)
 add_library(vampire_interface STATIC src/vampire_interface.cpp)
@@ -79,8 +81,10 @@ target_link_libraries(vampire_interface
   )
 
 target_link_libraries(understanding_system_node PUBLIC
+  ${std_srvs_TARGETS}
   ${coresense_msgs_TARGETS}
   ${triplestar_msgs_TARGETS}
+  session
   agent_model
   knowledge_model
   theory

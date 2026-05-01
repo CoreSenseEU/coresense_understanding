@@ -54,6 +54,7 @@ void KnowledgeModel::create_knowledge_model(std::string kb_response) {
      ss2 << modelet.to_tff() << std::endl;
    }
    model = ss2.str(); 
-   last_update = time(NULL);
+   last_update = std::chrono::system_clock::now();
+   dirty = false;
   }
 }

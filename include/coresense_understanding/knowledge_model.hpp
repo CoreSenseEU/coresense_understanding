@@ -1,7 +1,7 @@
 #ifndef knowledge_model_hpp
 #define knowledge_model_hpp
 
-#include <ctime>
+#include <chrono>
 #include <string>
 #include <nlohmann/json.hpp>
 
@@ -13,7 +13,8 @@ private:
   std::map<std::string, coresense::understanding::model::Modelet> modelets;
 public:
   std::string model;
-  time_t last_update;
+  bool dirty;
+  std::chrono::time_point<std::chrono::system_clock> last_update;
   
   KnowledgeModel() {};
   void create_knowledge_model(std::string kb_response);
