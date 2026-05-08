@@ -2,7 +2,6 @@
 #define agent_model_hpp
 
 #include <chrono>
-#include <list>
 #include <nlohmann/json.hpp>
 
 #include <coresense_understanding/model.hpp>

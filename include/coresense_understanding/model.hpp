@@ -18,24 +18,6 @@ std::string create_has_no_relation1(std::string relation, std::string individual
 std::string create_has_no_relation2(std::string relation, std::string individual, std::string set_klass);
 
 
-//struct Head {
-//  std::list<std::string> vars;
-//};
-//void from_json(const nlohmann::json& j, Head& r);
-//
-//struct Results {
-//  std::list<> bindings;
-//};
-//void from_json(const nlohmann::json& j, Head& r);
-//
-//struct SelectQuery {
-//  Head head;
-//  Results results;
-//  std::string value_range;
-//  std::string to_tff();
-//};
-//void from_json(const nlohmann::json& j, SelectQuery& r);
-
 struct Requirement {
   std::string name;
   std::string datatype;

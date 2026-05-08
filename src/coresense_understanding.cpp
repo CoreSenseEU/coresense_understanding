@@ -19,6 +19,7 @@
 #include "coresense_msgs/srv/start_session.hpp"
 #include "coresense_msgs/srv/list_session.hpp"
 #include "coresense_msgs/srv/add_to_session.hpp"
+#include "coresense_msgs/srv/remove_from_session.hpp"
 
 #include "coresense_understanding/model.hpp"
 #include "coresense_understanding/agent_model.hpp"
@@ -62,7 +63,9 @@ public:
       add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
       list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/list_session");
       // wait for clients to become available 
-      while (!add_to_session_client_ptr->wait_for_service(1s) && !list_session_client_ptr->wait_for_service(1s)) {
+      while (!add_to_session_client_ptr->wait_for_service(1s)
+         && !remove_from_session_client_ptr->wait_for_service(1s) 
+         && !list_session_client_ptr->wait_for_service(1s)) {
         if (!rclcpp::ok()) {
           RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the add_knowledge service. Exiting.");
           return; //TODO: find better way to kill this.
@@ -94,10 +97,12 @@ public:
     }
     read_logic();
     start_session_server_ptr = create_service<coresense_msgs::srv::StartSession>("/understanding/start_session", std::bind(&UnderstandingSystemNode::start_session, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-    mark_agent_server_ptr = create_service<std_srvs::srv::Trigger>("mark_agent_model_dirty", std::bind(&UnderstandingSystemNode::mark_agent_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    mark_agent_server_ptr = create_service<std_srvs::srv::Trigger>("/understanding/mark_agent_model_dirty", std::bind(&UnderstandingSystemNode::mark_agent_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     mark_knowledge_server_ptr = create_service<std_srvs::srv::Trigger>("/understanding/mark_knowledge_model_dirty", std::bind(&UnderstandingSystemNode::mark_knowledge_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     //test_understanding_service_server_ptr = create_service<coresense_msgs::srv::TestUnderstanding>("/understanding/run_test", std::bind(&UnderstandingSystemNode::test_understanding, this, std::placeholders::_1, std::placeholders::_2));
     //test_reasoner();
+    RCLCPP_INFO(get_logger(), "Waiting for 2.5s");
+    rclcpp::sleep_for(std::chrono::milliseconds(2500));
     update_models();
     if (false) {
       std::string theo = theory_reader.get_theories();
@@ -134,6 +139,7 @@ private:
   rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedPtr get_modelets_client_ptr;
   rclcpp::Client<coresense_msgs::srv::StartSession>::SharedPtr start_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedPtr add_to_session_client_ptr;
+  rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedPtr remove_from_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::ListSession>::SharedPtr list_session_client_ptr;
   rclcpp_action::Server<UnderstandAction>::SharedPtr understand_action_server_ptr;
   coresense::understanding::agent_model::AgentModel agent_model;
@@ -142,6 +148,8 @@ private:
   std::chrono::seconds knowledge_model_update_interval = std::chrono::seconds(1);
   ns_theory::TheoryReader theory_reader{std::filesystem::path(ament_index_cpp::get_package_share_directory("coresense_understanding"))};
   ns_vampire::VampireInterface vampire_interface;
+
+  std::map<std::string, rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedPtr> selectQueryClients;
 
   std::map<rclcpp_action::GoalUUID, std::shared_ptr<UnderstandActionGoalHandle>> goals;
   std::stringstream knowledge;
@@ -167,20 +175,34 @@ private:
     theory_reader.read_package_logic(ament_index_cpp::get_package_share_directory("coresense_understanding"), "understanding-logic/tff/model");
   }
 
+
   
   void get_modelet_snapshot() {
     RCLCPP_INFO(get_logger(), "Creating knowledge model.");
+    for (std::string klass : knowledge_model.klasses) {
+      selectQueryClients[klass] = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar_core/query_services/"+klass+"_query");
+      auto request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
+      auto callback = [this, klass](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture future) {
+        this->knowledge_model.add_klass(klass, future.get()->result);
+        knowledge_model.updated[klass] = true;
+        selectQueryClients.erase(klass);
+        RCLCPP_INFO(get_logger(), "Knowledge Model updated class: %s", klass.c_str());
+      };
+      selectQueryClients[klass]->async_send_request(request, callback);
+    }
     auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
     auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
       this->knowledge_model.create_knowledge_model(get_modelets_future.get()->result);
-      RCLCPP_INFO(get_logger(), "Created knowledge model.");
+      RCLCPP_INFO(get_logger(), "Knowledge Model updated modelets");
     };
+    //TODO enable multithreaded executor to make this work
+    //while (!(knowledge_model.updated["concept"] && knowledge_model.updated["representation_class"] && knowledge_model.updated["formalism"])){
+    //  rclcpp::sleep_for(std::chrono::milliseconds(50));
+    //}
     get_modelets_client_ptr->async_send_request(get_modelets_request, get_modelets_cb);
   }
   
   void analyse_ros_system() {
-    RCLCPP_INFO(get_logger(), "Waiting for 2.5s");
-    rclcpp::sleep_for(std::chrono::milliseconds(2500));
     RCLCPP_INFO(get_logger(), "Creating agent model.");
     for (std::string node_name : get_node_names()) {
       if ((node_name.rfind("/_ros2cli_", 0) != 0) && (node_name.rfind("/launch_ros", 0) != 0)) {
@@ -216,6 +238,7 @@ private:
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<std_srvs::srv::Trigger::Request> incoming_request) {
     agent_model.dirty = true;
+    RCLCPP_INFO(get_logger(), "Agent Model marked dirty.");
     std_srvs::srv::Trigger::Response response;
     response.success = true;
     response.message = "";
@@ -226,6 +249,7 @@ private:
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<std_srvs::srv::Trigger::Request> incoming_request) {
     knowledge_model.dirty = true;
+    RCLCPP_INFO(get_logger(), "Knowledge Model marked dirty.");
     std_srvs::srv::Trigger::Response response;
     response.success = true;
     response.message = "";
@@ -236,35 +260,26 @@ private:
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<coresense_msgs::srv::StartSession::Request> incoming_request) {
     // special service that can call a service
-    auto start_session_cb = [start_session_server_ptr, request_header, incoming_request,  this](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
+    auto start_session_cb = [this, start_session_server_ptr, request_header, incoming_request](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
       std::string session_id = start_session_future.get()->session_id;
       RCLCPP_INFO(get_logger(), "Creating Session %s", session_id.c_str());
       sessions.emplace(session_id, coresense::understanding::session::Session(session_id));
 
-      std::stringstream logic;
       //TODO refactor the next three lines for consistency and efficiency (session manager)
-      logic << this->theory_reader.get_theories();
-      logic << this->agent_model.model;
-      logic << this->knowledge_model.model;
-      auto add_to_session_request = std::make_shared<coresense_msgs::srv::AddToSession::Request>();
-      add_to_session_request->tptp = logic.str();
-      add_to_session_request->session_id = session_id;
+      add_to_session(session_id, "understanding_theory", theory_reader.get_theories());
+      add_to_session(session_id, "agent_model", agent_model.model);
+      add_to_session(session_id, "knowledge_model", knowledge_model.model);
       sessions[session_id].last_agent_update = agent_model.last_update;
       sessions[session_id].last_knowledge_update = knowledge_model.last_update;
-      auto add_to_session_cb = [start_session_server_ptr, request_header, add_to_session_request, this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture add_to_session_future) {
-        coresense_msgs::srv::StartSession::Response start_session_response;
-        start_session_response.session_id = add_to_session_request->session_id;
-        start_session_server_ptr->send_response(*request_header, start_session_response);
-        RCLCPP_INFO(get_logger(), "Created Session %s", start_session_response.session_id.c_str());
-      };
-      add_to_session_client_ptr->async_send_request(add_to_session_request, add_to_session_cb);
-
+      coresense_msgs::srv::StartSession::Response response;
+      response.session_id = session_id;
+      start_session_server_ptr->send_response(*request_header, response);
     };
     auto start_session_request = std::make_shared<coresense_msgs::srv::StartSession::Request>();
     start_session_client_ptr->async_send_request(start_session_request, start_session_cb);
   }
 
-  void add_to_session(std::string session_id, std::string theory) {
+  void add_to_session(std::string session_id, std::string theory_id, std::string theory) {
     while (!add_to_session_client_ptr->wait_for_service(std::chrono::seconds(1))) {
       if (!rclcpp::ok()) {
         RCLCPP_ERROR(get_logger(), "Client interrupted while waiting for service to appear.");
@@ -274,19 +289,49 @@ private:
     auto request = std::make_shared<coresense_msgs::srv::AddToSession::Request>();
     request->tptp = theory +"\n\n";
     request->session_id = session_id;
-    auto result_future = add_to_session_client_ptr->async_send_request(request);
-    if (rclcpp::spin_until_future_complete(get_node_base_interface(), result_future) !=
-      rclcpp::FutureReturnCode::SUCCESS) {
-      RCLCPP_ERROR(get_logger(), "Calling add_knowledge service failed :(");
-      add_to_session_client_ptr->remove_pending_request(result_future);
-    }
-    else {
-      auto result = result_future.get();
+    request->formula_set_id = theory_id;
+    auto callback = [this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture future) {
+      auto result = future.get();
       RCLCPP_INFO(get_logger(), "Adding Knowledge returned %s", (result->success? "true" : "false"));
-    }
+    };
+    auto result_future = add_to_session_client_ptr->async_send_request(request, callback);
   }
   
 
+  void remove_from_session(std::string session_id, std::string theory_id) {
+    while (!remove_from_session_client_ptr->wait_for_service(std::chrono::seconds(1))) {
+      if (!rclcpp::ok()) {
+        RCLCPP_ERROR(get_logger(), "Client interrupted while waiting for service to appear.");
+      }
+      RCLCPP_INFO(get_logger(), "Waiting for service to appear...");
+    }
+    auto request = std::make_shared<coresense_msgs::srv::RemoveFromSession::Request>();
+    request->session_id = session_id;
+    request->formula_set_id = theory_id;
+    auto callback = [this](rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedFuture future) {
+      auto result = future.get();
+      RCLCPP_INFO(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
+    };
+    auto result_future = remove_from_session_client_ptr->async_send_request(request, callback);
+  }
+
+  void replace_in_session(std::string session_id, std::string theory_id, std::string theory) {
+    while (!remove_from_session_client_ptr->wait_for_service(std::chrono::seconds(1))) {
+      if (!rclcpp::ok()) {
+        RCLCPP_ERROR(get_logger(), "Client interrupted while waiting for service to appear.");
+      }
+      RCLCPP_INFO(get_logger(), "Waiting for service to appear...");
+    }
+    auto request = std::make_shared<coresense_msgs::srv::RemoveFromSession::Request>();
+    request->session_id = session_id;
+    request->formula_set_id = theory_id;
+    auto callback = [this, session_id, theory_id, theory](rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedFuture future) {
+      auto result = future.get();
+      RCLCPP_INFO(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
+      add_to_session(session_id, theory_id, theory);
+    };
+    auto result_future = remove_from_session_client_ptr->async_send_request(request, callback);
+  }
 
   rclcpp_action::GoalResponse handle_goal(
     const rclcpp_action::GoalUUID & uuid,
@@ -328,19 +373,18 @@ private:
     //check if understanding system theories are too old or known to have changed
     coresense::understanding::session::Session session = sessions[goal->session_id];
     std::chrono::time_point now = std::chrono::system_clock::now();
-    //TODO update vampire wrapper to support removing of theories, identifying theories by id
     if ((agent_model.dirty) || (now > (agent_model.last_update + agent_model_update_interval))) {
-      analyse_ros_system();
+      //analyse_ros_system();
     }
     if ((knowledge_model.dirty) || (now > (knowledge_model.last_update + knowledge_model_update_interval))) {
-      get_modelet_snapshot();
+      //get_modelet_snapshot();
     }
     //check if session theories are too old
     if (now > (agent_model.last_update + session.agent_model_max_age)) {
-      //TODO remove agent model from vampire and add new one
+      //replace_in_session(goal->session_id, "agent_model", agent_model.model);
     }
     if (now > (knowledge_model.last_update + session.knowledge_model_max_age)) {
-      //TODO remove knowledge model from vampire and add new one
+      //replace_in_session(goal->session_id, "knowledge_model", knowledge_model.model);
     }
 
     std::string config = "";
