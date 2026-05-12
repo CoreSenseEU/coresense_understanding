@@ -8,7 +8,7 @@ const std::string REPRESENTATION_CLASS = "representation_class";
 
 std::string create_relation_limit1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
-  ss << "tff(axiom_" << individual << "_" << relation << "_existence, axiom," << std::endl 
+  ss << "tff(axiom_" << individual << "_" << relation << "_limitation, axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
      << "    " << relation << "(" << individual << ", X)" << std::endl
@@ -24,7 +24,7 @@ std::string create_relation_limit1(std::string relation, std::string individual,
 
 std::string create_relation_exist1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
-  ss << "tff(axiom_" << individual << "_" << relation << "_existence, axiom," << std::endl 
+  ss << "tff(axiom_" << individual << "_" << relation << "_existence_left, axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
      << "    (";
@@ -41,7 +41,7 @@ std::string create_relation_exist1(std::string relation, std::string individual,
 
 std::string create_relation_exist2(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
-  ss << "tff(axiom_" << individual << "_" << relation << ", axiom," << std::endl 
+  ss << "tff(axiom_" << individual << "_" << relation << "existence_right, axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
      << "    (";
@@ -180,18 +180,20 @@ std::string Template::to_tff() {
 
 std::string Modelet::to_tff() {
   std::stringstream output, req_set;
-  output << "tff(decl_" << name << "_modelet, type,\n  "<< name << ": modelet).\n";
-  output << "tff(decl_" << formalism << "_formalism, type,\n  "<< formalism << ": formalism).\n";
+  output << "tff(decl_" << name << "_modelet, type,  "<< name << ": modelet).\n";
+  output << "tff(decl_" << formalism << "_formalism, type,  "<< formalism << ": formalism).\n";
   output << "tff(" << name << "_formalism, axiom,\n  formalism_of_modelet(" << name << ") = " << formalism << "\n).\n";
   if (representation_classes.empty()) {
     output << create_has_no_relation1("modelet_has_representation_class", name, "representation_class");
   } else { // modelet has representation_classes
     output << create_relation_limit1("modelet_has_representation_class", name, "representation_class", representation_classes);
+    output << create_relation_exist1("modelet_has_representation_class", name, "representation_class", representation_classes);
   }
   if (concepts.empty()) {
     output << create_has_no_relation1("modelet_models_concept", name, "concept");
   } else { // modelet has concepts
     output << create_relation_limit1("modelet_models_concept", name, "concept", concepts);
+    output << create_relation_exist1("modelet_models_concept", name, "concept", concepts);
   }
   if (creator != "") {
     output << "tff(" << name << "_modelet_has_creator, axiom,\n  modelet_has_creator(" << name << ", " << creator << ")\n).\n";
@@ -208,6 +210,7 @@ std::string Modelet::to_tff() {
       property_names.insert(prop.name);
     }
     output << create_relation_exist1("modelet_has_property", name, "property", property_names);
+    output << create_relation_limit1("modelet_has_property", name, "property", property_names);
   }
   return output.str();
 }
