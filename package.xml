@@ -18,11 +18,12 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
-  <depend>coresense_vampire</depend>
   <depend>coresense_msgs</depend>
-  <depend>std_srvs</depend>
   <depend>triplestar_msgs</depend>
+  <depend>std_srvs</depend>
 
+  <exec_depend>triplestar_core</exec_depend>
+  <exec_depend>coresense_vampire</exec_depend>
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>rclpy</exec_depend>
 
