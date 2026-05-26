@@ -7,11 +7,31 @@ It uses existing models as well as model-modification skills (engines) wrapped i
 
 ### Installation
 
+#### Manual
 ```bash
 git clone --recursive https://github.com/CoreSenseEU/coresense_understanding src/coresense_understanding
 git clone https://github.com/CoreSenseEU/coresense_msgs src/coresense_msgs
 git clone https://github.com/CoreSenseEU/coresense_vampire src/coresense_vampire
-sudo apt install -y --no-install-recommends ros-jazzy-tinyxml2-vendor ros-jazzy-nlohmann-json-schema-validator-vendor
+git clone https://github.com/CoreSenseEU/triplestar_kb src/triplestar_kb
+git clone https://github.com/CoreSenseEU/coresense_bringup src/coresense_bringup
+git clone https://github.com/CoreSenseEU/coresense_understanding_bringup src/coresense_understanding_bringup
+sudo apt install -y --no-install-recommends python3-pip ros-jazzy-tinyxml2-vendor ros-jazzy-nlohmann-json-schema-validator-vendor
+# dependencies for triplestar_kb:
+pip install --user --break-system-packages pydantic pyoxigraph reasonable oxrdflib shapely copier returns
+colcon build --symlink-install
+source install/setup.bash
+```
+
+#### Scripts
+```bash
+git clone https://github.com/CoreSenseEU/coresense_bringup src/coresense_bringup
+git clone https://github.com/CoreSenseEU/coresense_understanding_bringup src/coresense_understanding_bringup
+git clone --recursive https://github.com/CoreSenseEU/coresense_understanding src/coresense_understanding
+cd coresense_understanding
+./install.sh
+cd ../triplestar_kb
+./install.sh
+cd ../..
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -22,7 +42,7 @@ source install/setup.bash
 - [understanding-logic](https://github.com/CoreSenseEU/understanding-logic)
 - [coresense_msgs](https://github.com/CoreSenseEU/coresense_msgs)
 - [coresense_vampire](https://github.com/CoreSenseEU/coresense_vampire)
-- [triplestar_kb](https://github.com/kas-lab/triplestar_kb)
+- [triplestar_kb](https://github.com/CoreSenseEU/triplestar_kb)
 
 This should work in any ROS2 distribution.
 
@@ -96,20 +116,27 @@ We have a set of example skills at: [insert link]
 
 ### Usage
 
-1. Run the components
+#### Via launch file
+
+
+1. Run the understanding system
 ```bash
-ros2 run triplestar_kb ???
-ros2 run coresense_vampire mynode.py
-ros2 run coresense_understanding understanding_system_node
+ros2 launch coresense_understanding_bringup coresense_understanding.launch.py
 ```
 
 2. Start a session
 ```bash
 ros2 service call /understanding/start_session coresense_msgs/srv/StartSession "{}"
+export SESSION_ID=[replace with id returned by the service call]
 ```
 
 3. Ask for a strategy
 ```bash
-TPTP=$(cat query.tff)
-ros2 action send_goal /understanding/understand coresense_msgs/action/Understand "{session_id: '$1', target_modelet: '$TPTP'}"
+export TPTP=$(cat query.tff)
+ros2 action send_goal /understanding/understand coresense_msgs/action/Understand "{session_id: '$SESSION_ID', target_modelet: '$TPTP'}"
+```
+
+4. End the session
+```bash
+ros2 service call /understanding/end_session coresense_msgs/srv/EndSession "{session_id: '$SESSION_ID'}"
 ```
