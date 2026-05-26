@@ -37,7 +37,7 @@ ExertNode::ExertNode(std::smatch match)
 }
 
 std::string ExertNode::print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) {
-  std::string tree = map[modelet_set]->print(map) + "\n" +"      <SubTree ID=\"" + name +"\"/>";
+  std::string tree = map[modelet_set]->print(map) +"      <SubTree ID=\"" + name +"\"/>";
   return tree;
 }
 
@@ -103,7 +103,7 @@ std::string ExertnNode::print(std::unordered_map<std::string, std::shared_ptr<Gr
   //for (auto exert : exerts) {
   //  tree << map[exert]->get_id() << "_port='{" << map[exert]->get_id() << "_port}' ";
   //}
-  tree << "/>" << std::endl;
+  tree << "/>";
   //std::cout << tree.str() << std::endl;
   //tree << subtree_port_name << "='{" << parent_tree_output_port_name << "}'" << subtree_output_port_name << "='{" << id << "}'/>\n";
   return tree.str();
