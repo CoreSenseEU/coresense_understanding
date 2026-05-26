@@ -17,6 +17,7 @@
 #include "coresense_msgs/srv/test_understanding.hpp"
 
 #include "coresense_msgs/srv/start_session.hpp"
+#include "coresense_msgs/srv/end_session.hpp"
 #include "coresense_msgs/srv/list_session.hpp"
 #include "coresense_msgs/srv/add_to_session.hpp"
 #include "coresense_msgs/srv/remove_from_session.hpp"
@@ -60,6 +61,7 @@ public:
       get_modelets_client_ptr = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar_core/query_services/get_modelets");
       query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/query_reasoner");
       start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/start_session");
+      end_session_client_ptr = create_client<coresense_msgs::srv::EndSession>("/end_session");
       add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
       list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/list_session");
       // wait for clients to become available 
@@ -97,6 +99,7 @@ public:
     }
     read_logic();
     start_session_server_ptr = create_service<coresense_msgs::srv::StartSession>("/understanding/start_session", std::bind(&UnderstandingSystemNode::start_session, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    end_session_server_ptr = create_service<coresense_msgs::srv::EndSession>("/understanding/end_session", std::bind(&UnderstandingSystemNode::end_session, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     mark_agent_server_ptr = create_service<std_srvs::srv::Trigger>("/understanding/mark_agent_model_dirty", std::bind(&UnderstandingSystemNode::mark_agent_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     mark_knowledge_server_ptr = create_service<std_srvs::srv::Trigger>("/understanding/mark_knowledge_model_dirty", std::bind(&UnderstandingSystemNode::mark_knowledge_model_dirty, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     //test_understanding_service_server_ptr = create_service<coresense_msgs::srv::TestUnderstanding>("/understanding/run_test", std::bind(&UnderstandingSystemNode::test_understanding, this, std::placeholders::_1, std::placeholders::_2));
@@ -132,12 +135,14 @@ public:
 private:
   rclcpp_action::Client<QueryReasonerAction>::SharedPtr query_reasoner_action_client_ptr;
   rclcpp::Service<coresense_msgs::srv::StartSession>::SharedPtr start_session_server_ptr;
+  rclcpp::Service<coresense_msgs::srv::EndSession>::SharedPtr end_session_server_ptr;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr mark_agent_server_ptr;
   rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr mark_knowledge_server_ptr;
   //rclcpp::Service<coresense_msgs::srv::TestUnderstanding>::SharedPtr test_understanding_service_server_ptr;
   rclcpp::Client<triplestar_msgs::srv::SPARQLQuery>::SharedPtr query_triplestar_kb_ptr;
   rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedPtr get_modelets_client_ptr;
   rclcpp::Client<coresense_msgs::srv::StartSession>::SharedPtr start_session_client_ptr;
+  rclcpp::Client<coresense_msgs::srv::EndSession>::SharedPtr end_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedPtr add_to_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedPtr remove_from_session_client_ptr;
   rclcpp::Client<coresense_msgs::srv::ListSession>::SharedPtr list_session_client_ptr;
@@ -186,14 +191,14 @@ private:
         this->knowledge_model.add_klass(klass, future.get()->result);
         knowledge_model.updated[klass] = true;
         selectQueryClients.erase(klass);
-        RCLCPP_INFO(get_logger(), "Knowledge Model updated class: %s", klass.c_str());
+        RCLCPP_DEBUG(get_logger(), "Knowledge Model updated class: %s", klass.c_str());
       };
       selectQueryClients[klass]->async_send_request(request, callback);
     }
     auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
     auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
       this->knowledge_model.create_knowledge_model(get_modelets_future.get()->result);
-      RCLCPP_INFO(get_logger(), "Knowledge Model updated modelets");
+      RCLCPP_DEBUG(get_logger(), "Knowledge Model updated modelets");
     };
     //TODO enable multithreaded executor to make this work
     //while (!(knowledge_model.updated["concept"] && knowledge_model.updated["representation_class"] && knowledge_model.updated["formalism"])){
@@ -206,19 +211,18 @@ private:
     RCLCPP_INFO(get_logger(), "Creating agent model.");
     for (std::string node_name : get_node_names()) {
       if ((node_name.rfind("/_ros2cli_", 0) != 0) && (node_name.rfind("/launch_ros", 0) != 0)) {
-        RCLCPP_INFO(get_logger(), "Scanning node %s", node_name.c_str());
+        RCLCPP_DEBUG(get_logger(), "Scanning node %s", node_name.c_str());
         auto parameters_client = std::make_shared<rclcpp::SyncParametersClient>(this, node_name);
         try {       
           std::string engine_annotation = parameters_client->get_parameter<std::string>("coresense_engine");
           if (engine_annotation.length() > 0) {
-            RCLCPP_INFO(get_logger(), "Creating engine model for %s", node_name.c_str());
             agent_model.create_engine_model(node_name, engine_annotation);
-            RCLCPP_INFO(get_logger(), "Created engine model for %s", node_name.c_str());
+            RCLCPP_DEBUG(get_logger(), "Created engine model for %s", node_name.c_str());
           } else {
-            RCLCPP_INFO(get_logger(), "Node %s is not annotated", node_name.c_str());
+            RCLCPP_DEBUG(get_logger(), "Node %s is not annotated", node_name.c_str());
           }
         } catch (std::runtime_error& e) {
-          RCLCPP_WARN(get_logger(), "Node %s produced error %s", node_name.c_str(), e.what());
+          RCLCPP_DEBUG(get_logger(), "Node %s produced error %s", node_name.c_str(), e.what());
         } catch (std::exception &e ) {
           RCLCPP_ERROR(get_logger(), "Could not read Node %s annotation. Caught error: %s", node_name.c_str(), e.what());
         }
@@ -279,6 +283,27 @@ private:
     start_session_client_ptr->async_send_request(start_session_request, start_session_cb);
   }
 
+  void end_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::EndSession>> end_session_server_ptr,
+               const std::shared_ptr<rmw_request_id_t> request_header,
+               const std::shared_ptr<coresense_msgs::srv::EndSession::Request> incoming_request) {
+    // special service that can call a service
+    auto end_session_cb = [this, end_session_server_ptr, request_header, incoming_request](rclcpp::Client<coresense_msgs::srv::EndSession>::SharedFuture end_session_future) {
+      coresense_msgs::srv::EndSession::Response response;
+      response.success = end_session_future.get()->success;
+      if (response.success) {
+        sessions.erase(incoming_request->session_id);
+        RCLCPP_INFO(get_logger(), "Ended session %s", incoming_request->session_id.c_str());
+
+      } else {
+        RCLCPP_WARN(get_logger(), "Failed to end session %s", incoming_request->session_id.c_str());
+      }
+      end_session_server_ptr->send_response(*request_header, response);
+    };
+    auto end_session_request = std::make_shared<coresense_msgs::srv::EndSession::Request>();
+    end_session_request->session_id = incoming_request->session_id;
+    end_session_client_ptr->async_send_request(end_session_request, end_session_cb);
+  }
+
   void add_to_session(std::string session_id, std::string theory_id, std::string theory) {
     while (!add_to_session_client_ptr->wait_for_service(std::chrono::seconds(1))) {
       if (!rclcpp::ok()) {
@@ -292,7 +317,7 @@ private:
     request->formula_set_id = theory_id;
     auto callback = [this](rclcpp::Client<coresense_msgs::srv::AddToSession>::SharedFuture future) {
       auto result = future.get();
-      RCLCPP_INFO(get_logger(), "Adding Knowledge returned %s", (result->success? "true" : "false"));
+      RCLCPP_DEBUG(get_logger(), "Adding Knowledge returned %s", (result->success? "true" : "false"));
     };
     auto result_future = add_to_session_client_ptr->async_send_request(request, callback);
   }
@@ -310,7 +335,7 @@ private:
     request->formula_set_id = theory_id;
     auto callback = [this](rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedFuture future) {
       auto result = future.get();
-      RCLCPP_INFO(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
+      RCLCPP_DEBUG(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
     };
     auto result_future = remove_from_session_client_ptr->async_send_request(request, callback);
   }
@@ -327,7 +352,7 @@ private:
     request->formula_set_id = theory_id;
     auto callback = [this, session_id, theory_id, theory](rclcpp::Client<coresense_msgs::srv::RemoveFromSession>::SharedFuture future) {
       auto result = future.get();
-      RCLCPP_INFO(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
+      RCLCPP_DEBUG(get_logger(), "Removing Knowledge returned %s", (result->success? "true" : "false"));
       add_to_session(session_id, theory_id, theory);
     };
     auto result_future = remove_from_session_client_ptr->async_send_request(request, callback);
@@ -407,7 +432,7 @@ private:
   }
 
   std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<coresense_msgs::action::QueryReasoner>>> send_goal(std::string session_id, std::string query, std::string config) {
-    RCLCPP_INFO(get_logger(), "Looking for Reasoner to send query.");
+    RCLCPP_DEBUG(get_logger(), "Looking for Reasoner to send query.");
 
     //std::cout << "waiting for reasoner" << std::endl;
     if (!query_reasoner_action_client_ptr->wait_for_action_server()) {
@@ -415,7 +440,7 @@ private:
       //need to throw some exeception here to denote the failing wait
       return std::shared_future<std::shared_ptr<rclcpp_action::ClientGoalHandle<coresense_msgs::action::QueryReasoner>>>();
     }
-    RCLCPP_INFO(get_logger(), "Found Reasoner.");
+    RCLCPP_DEBUG(get_logger(), "Found Reasoner.");
     //std::cout << "have reasoner" << std::endl;
 
     auto goal_msg = QueryReasonerAction::Goal();
@@ -427,7 +452,7 @@ private:
     auto send_goal_options = rclcpp_action::Client<QueryReasonerAction>::SendGoalOptions();
     send_goal_options.goal_response_callback = [this](const QueryReasonerActionGoalHandle::SharedPtr & goal_handle) {
       if (!goal_handle) {
-        RCLCPP_ERROR(get_logger(), "Query goal was rejected by reasoner");
+        RCLCPP_WARN(get_logger(), "Query goal was rejected by reasoner");
         auto understanding_result = std::make_shared<UnderstandAction::Result>();
         understanding_result->result = "Reasoner rejected query";
         auto id = goal_handle->get_goal_id();
@@ -453,12 +478,22 @@ private:
       switch (wrapped_result.code) {
         case rclcpp_action::ResultCode::SUCCEEDED: {
           RCLCPP_INFO(get_logger(), "Goal succeeded with code %d", wrapped_result.result->code);
-          RCLCPP_INFO(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+          if (wrapped_result.result->code == 0) {
+            RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+          } else if (wrapped_result.result->code == 1) {
+            RCLCPP_INFO(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
+            RCLCPP_DEBUG(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+          } else {
+            RCLCPP_WARN(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
+            RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+          }
           std::vector<std::string> trees = vampire_interface.parse_output(wrapped_result.result->result);
           std::stringstream result;
           for (std:: string tree : trees) {
-            result << tree << std::endl;
+            result << tree;
           }
+          RCLCPP_INFO(get_logger(), "Resulting tree is:\n%s", result.str().c_str());
+
           understanding_result->result = result.str();
           if (!(goals[wrapped_result.goal_id] == nullptr)) {
             goals[wrapped_result.goal_id]->succeed(understanding_result);
