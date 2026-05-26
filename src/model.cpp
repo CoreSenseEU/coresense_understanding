@@ -217,6 +217,7 @@ std::string Modelet::to_tff() {
 
 std::string Engine::to_tff() {
   std::stringstream output, templates;
+  output << "tff(" << name << "_is_available, axiom,\n  ~engine_unavailable(" << name << ")).\n";
   output << "tff(" << name << "_imparts_formalism, axiom,\n  output_modelet_formalism(" << name << ") = " << engine_output.formalism << "\n).\n";
   if (!inputs.empty()) {
     templates << "tff(" << name << "_input_definition_axiom, axiom,\n  defines_input" << inputs.size() << "(";
@@ -249,6 +250,16 @@ std::string Engine::to_tff() {
   } else { // engine imparts no propertys
     output << create_has_no_relation1("engine_imparts_property", name, "property");
   }
+  if (!resources_consumed.empty()) {
+    std::set<std::string> resources;
+    for (Resource resource : resources_consumed) {
+      resources.insert(resource.name);
+    }
+    output << create_relation_exist1("engine_uses_resource", name, "resource", resources);
+  } else { // engine uses no resources
+    output << create_has_no_relation1("engine_uses_resource", name, "resource");
+  }
+
   return output.str();
 }
 

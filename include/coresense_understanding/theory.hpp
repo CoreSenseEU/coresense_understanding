@@ -24,6 +24,7 @@ private:
   const std::regex include_regex = std::regex("^include\\s*\\('(.*)'\\)\\.$");
   const std::regex query_regex = std::regex("tff\\s*\\([\\s\\w-]+\\, question\\s*\\,[^\\.]+\\)\\.");
   std::filesystem::path package_path;
+  std::string model;
 
   
   void parse_tptp_string(Theory t, std::stringstream& string_handle);

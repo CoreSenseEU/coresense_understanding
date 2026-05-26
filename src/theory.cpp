@@ -89,11 +89,14 @@ void TheoryReader::read_package_logic(std::string package_path, std::string logi
 
 
 std::string TheoryReader::get_theories() {
-  std::string body = "";
-  for (auto& [key, t] : theories) {
-    get_theory2(t, body);
+  if (model.empty()) {
+    std::string body = "";
+    for (auto& [key, t] : theories) {
+      get_theory2(t, body);
+    }
+    model = body;
   }
-  return body;
+  return model;
 }
 
 Theory TheoryReader::get_theory1(std::filesystem::path path) {
@@ -119,7 +122,7 @@ void TheoryReader::get_theory2(Theory &t, std::string &body) {
         RCLCPP_WARN(rclcpp::get_logger("understanding_system_node"), "get_theory: Path does not exist.\n Missing: %s,\n Imported by: %s", file_path.string().c_str(), t.id.string().c_str());
       }
     }
-    RCLCPP_INFO(rclcpp::get_logger("understanding_system_node"), "get_theory: Adding Theory:\n%s", t.id.string().c_str());
+    RCLCPP_DEBUG(rclcpp::get_logger("understanding_system_node"), "get_theory: Adding Theory:\n%s", t.id.string().c_str());
     body += t.content;
     t.added = true;
   }
