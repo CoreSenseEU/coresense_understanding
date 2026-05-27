@@ -10,7 +10,6 @@
 namespace coresense::understanding::agent_model {
 class AgentModel {
 private:
-  std::set<coresense::understanding::model::Engine> engines;
   std::map<std::string, std::set<std::string>> distinct_instances {
     {"engine", std::set<std::string>()},
     {"template", std::set<std::string>()},
@@ -25,6 +24,7 @@ private:
     {"", std::set<std::string>()}
   };
 public:
+  std::map<std::string, coresense::understanding::model::Engine> engines;
   std::string model;
   bool dirty;
   std::chrono::time_point<std::chrono::system_clock> last_update;

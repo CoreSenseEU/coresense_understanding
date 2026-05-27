@@ -2,7 +2,7 @@
 
 namespace coresense::understanding::interfaces::vampire {
 
-std::vector<std::string> VampireInterface::parse_output(std::string output) {
+std::vector<std::string> VampireInterface::parse_output(std::map<std::string, coresense::understanding::model::Engine> engines, std::string output) {
   std::vector<std::string> trees;
   //with label after 'for', with optional capturing group
   //const std::regex answer_line_regex = std::regex("^% SZS answers Tuple \\[\\(?:(.*)\\)?\\|_\\] for [\\-\\w]+$");
@@ -27,7 +27,7 @@ std::vector<std::string> VampireInterface::parse_output(std::string output) {
       const std::sregex_token_iterator End;
       for (std::sregex_token_iterator it(answers.begin(), answers.end(), answer_regex, 1); it != End; ++it) {
         std::string answer = *it;
-        consume_answer(map, answer);
+        consume_answer(engines, map, answer);
         trees.push_back(build_behavior_tree(map, answer));
       }
     } else {
@@ -41,47 +41,47 @@ std::string VampireInterface::build_behavior_tree(std::unordered_map<std::string
   return "<root BTCPP_format=\"4\">\n<BehaviorTree ID=\"Understanding Solution XYZ\">\n<Sequence>\n" + map[root_id]->print(map) + "\n</Sequence>\n</BehaviorTree>\n</root>";
 }
 
-void VampireInterface::consume_answer(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
-  if (consume_exertn(map, answer)) {
-    consume_answer(map, answer);
+void VampireInterface::consume_answer(std::map<std::string, coresense::understanding::model::Engine> engines, std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
+  if (consume_exertn(engines, map, answer)) {
+    consume_answer(engines, map, answer);
   }
   return;
 }
 
-void VampireInterface::consume_answer_set(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
-  if (consume_exert(map, answer)) {
-    consume_answer_set(map, answer);
-  } else if (consume_subset(map, answer)) {
-    consume_answer_set(map, answer);
-  }
-  return;
-}
+//void VampireInterface::consume_answer_set(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
+//  if (consume_exert(map, answer)) {
+//    consume_answer_set(map, answer);
+//  } else if (consume_subset(map, answer)) {
+//    consume_answer_set(map, answer);
+//  }
+//  return;
+//}
 
-bool VampireInterface::consume_exert(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
-  // This reads an exert(engine, modelet_set) string and turns it into an object representation, recursively. This is the no-longer used set variant
-  const std::regex exert_regex = std::regex("exert\\(([\\w-]+)\\,([\\w-]+)\\)");
-  std::smatch match;
-  // this does not yet handle parallel execution of nodes, which is why it was replaced by the set-less version below.
-  if (std::regex_search(answer, match, exert_regex)) {
-    if (map.find(match[1]) == map.end()) {
-      map[match[1]] = std::make_shared<ns_graph::ConceptNode>(match[1]);
-      //std::cout << "Created ConceptNode " << match[1] << std::endl;
-    }
-    if (map.find(match[2]) == map.end()) {
-      map[match[2]] = std::make_shared<ns_graph::ConceptNode>(match[2]);
-      //std::cout << "Created ConceptNode " << match[2] << std::endl;
-    }
-    auto n = std::make_shared<ns_graph::ExertNode>(match); 
-    map[n->id] = n;
-    //std::cout << "Created ExertNode " << n->id << " from exert(" << match[1] << "," << match[2] << ")" << std::endl;
-    answer = std::regex_replace(answer, exert_regex, n->id, std::regex_constants::format_first_only);
-    return true;
-  } else {
-    return false;
-  }
-}
+//bool VampireInterface::consume_exert(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
+//  // This reads an exert(engine, modelet_set) string and turns it into an object representation, recursively. This is the no-longer used set variant
+//  const std::regex exert_regex = std::regex("exert\\(([\\w-]+)\\,([\\w-]+)\\)");
+//  std::smatch match;
+//  // this does not yet handle parallel execution of nodes, which is why it was replaced by the set-less version below.
+//  if (std::regex_search(answer, match, exert_regex)) {
+//    if (map.find(match[1]) == map.end()) {
+//      map[match[1]] = std::make_shared<ns_graph::ConceptNode>(match[1]);
+//      //std::cout << "Created ConceptNode " << match[1] << std::endl;
+//    }
+//    if (map.find(match[2]) == map.end()) {
+//      map[match[2]] = std::make_shared<ns_graph::ConceptNode>(match[2]);
+//      //std::cout << "Created ConceptNode " << match[2] << std::endl;
+//    }
+//    auto n = std::make_shared<ns_graph::ExertNode>(match); 
+//    map[n->id] = n;
+//    //std::cout << "Created ExertNode " << n->id << " from exert(" << match[1] << "," << match[2] << ")" << std::endl;
+//    answer = std::regex_replace(answer, exert_regex, n->id, std::regex_constants::format_first_only);
+//    return true;
+//  } else {
+//    return false;
+//  }
+//}
 
-bool VampireInterface::consume_exertn(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
+bool VampireInterface::consume_exertn(std::map<std::string, coresense::understanding::model::Engine> engines, std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
   // This reads exert[0-9]+(engine, modelet1, modelet2, ..., modeletN) string and turns it into an object representation, recursively. This is the new set-less variant
   const std::regex exert_regex = std::regex("exert(\\d+)\\(([\\w-]+)([,\\w-]+)\\)");
   const std::regex modelet_regex = std::regex("([\\w-]+)");
@@ -94,7 +94,7 @@ bool VampireInterface::consume_exertn(std::unordered_map<std::string, std::share
     // we'll have to test this
     if (map.find(match[2]) == map.end()) {
       // engine
-      auto n = std::make_shared<ns_graph::ExertnNode>(match[2]); 
+      auto n = std::make_shared<ns_graph::ExertnNode>(engines[match[2]]); 
       map[n->id] = n;
       //std::cout << "created ExertnNode " << n->id << " from " << match[0] << std::endl;
       answer = std::regex_replace(answer, exert_regex, n->id, std::regex_constants::format_first_only);
@@ -116,27 +116,27 @@ bool VampireInterface::consume_exertn(std::unordered_map<std::string, std::share
   }
 }
 
-bool VampireInterface::consume_subset(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
-  const std::regex subset_regex = std::regex("s\\(([\\w-]+)\\,([\\w-]+)\\)");
-  std::smatch match;
-  if (std::regex_search(answer, match, subset_regex)) {
-    if (map.find(match[1]) == map.end()) {
-      map[match[1]] = std::make_shared<ns_graph::ConceptNode>(match[1]);
-      //std::cout << "created ConceptNode " << match[1] << std::endl;
-    }
-    if (map.find(match[2]) == map.end()) {
-      map[match[2]] = std::make_shared<ns_graph::ConceptNode>(match[2]);
-      //std::cout << "Created ConceptNode " << match[2] << std::endl;
-    }
-    auto n = std::make_shared<ns_graph::SubsetNode>(match);
-    map[n->id] = n;
-    //std::cout << "Created SubsetNode " << n->id << " from s(" << match[1] << "," << match[2] << ")" << std::endl;
-    answer = std::regex_replace(answer, subset_regex, n->id, std::regex_constants::format_first_only);
-    return true;
-  } else {
-    return false;
-  }
-}
+//bool VampireInterface::consume_subset(std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
+//  const std::regex subset_regex = std::regex("s\\(([\\w-]+)\\,([\\w-]+)\\)");
+//  std::smatch match;
+//  if (std::regex_search(answer, match, subset_regex)) {
+//    if (map.find(match[1]) == map.end()) {
+//      map[match[1]] = std::make_shared<ns_graph::ConceptNode>(match[1]);
+//      //std::cout << "created ConceptNode " << match[1] << std::endl;
+//    }
+//    if (map.find(match[2]) == map.end()) {
+//      map[match[2]] = std::make_shared<ns_graph::ConceptNode>(match[2]);
+//      //std::cout << "Created ConceptNode " << match[2] << std::endl;
+//    }
+//    auto n = std::make_shared<ns_graph::SubsetNode>(match);
+//    map[n->id] = n;
+//    //std::cout << "Created SubsetNode " << n->id << " from s(" << match[1] << "," << match[2] << ")" << std::endl;
+//    answer = std::regex_replace(answer, subset_regex, n->id, std::regex_constants::format_first_only);
+//    return true;
+//  } else {
+//    return false;
+//  }
+//}
 
 
 

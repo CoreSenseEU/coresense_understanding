@@ -63,9 +63,11 @@ public:
       start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/start_session");
       end_session_client_ptr = create_client<coresense_msgs::srv::EndSession>("/end_session");
       add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
+      remove_from_session_client_ptr = create_client<coresense_msgs::srv::RemoveFromSession>("/remove_from_session");
       list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/list_session");
       // wait for clients to become available 
       while (!add_to_session_client_ptr->wait_for_service(1s)
+         && !end_session_client_ptr->wait_for_service(1s) 
          && !remove_from_session_client_ptr->wait_for_service(1s) 
          && !list_session_client_ptr->wait_for_service(1s)) {
         if (!rclcpp::ok()) {
@@ -487,7 +489,7 @@ private:
             RCLCPP_WARN(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
             RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
           }
-          std::vector<std::string> trees = vampire_interface.parse_output(wrapped_result.result->result);
+          std::vector<std::string> trees = vampire_interface.parse_output(agent_model.engines, wrapped_result.result->result);
           std::stringstream result;
           for (std:: string tree : trees) {
             result << tree;

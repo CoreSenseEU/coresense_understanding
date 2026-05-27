@@ -8,6 +8,7 @@
 #include <regex>
 
 #include "uuid/uuid.h"
+#include <coresense_understanding/model.hpp>
 
 namespace coresense::understanding::graph {
 
@@ -23,26 +24,26 @@ public:
   virtual std::string get_id()=0;
 };
 
-class SubsetNode : public GraphNode {
-public:
-  std::string element;
-  std::string set;
-  
-  SubsetNode(std::smatch match);
-  ~SubsetNode() {};
-  std::string print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) override;
-  std::string get_id() override;
-};
+//class SubsetNode : public GraphNode {
+//public:
+//  std::string element;
+//  std::string set;
+//  
+//  SubsetNode(std::smatch match);
+//  ~SubsetNode() {};
+//  std::string print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) override;
+//  std::string get_id() override;
+//};
 
-class ExertNode : public GraphNode {
-public:
-  std::string modelet_set;
-  
-  ExertNode(std::smatch match);
-  ~ExertNode() {};
-  std::string print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) override;
-  std::string get_id() override;
-};
+//class ExertNode : public GraphNode {
+//public:
+//  std::string modelet_set;
+//  
+//  ExertNode(std::smatch match);
+//  ~ExertNode() {};
+//  std::string print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) override;
+//  std::string get_id() override;
+//};
 
 class ConceptNode : public GraphNode {
 public:
@@ -54,11 +55,11 @@ public:
 
 class ExertnNode : public GraphNode {
 public:
-  std::string engine;
+  coresense::understanding::model::Engine engine;
   std::vector<std::string> modelets;
   std::vector<std::string> exerts;
   
-  ExertnNode(std::string engine_name);
+  ExertnNode(coresense::understanding::model::Engine engine);
   ~ExertnNode() {};
   std::string print(std::unordered_map<std::string, std::shared_ptr<GraphNode>> & map) override;
   std::string get_id() override;

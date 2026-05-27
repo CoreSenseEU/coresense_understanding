@@ -247,7 +247,7 @@ std::string Engine::to_tff() {
       properties.insert(property.name);
     }
     output << create_relation_exist1("engine_imparts_property", name, "property", properties);
-  } else { // engine imparts no propertys
+  } else { // engine imparts no properties
     output << create_has_no_relation1("engine_imparts_property", name, "property");
   }
   if (!resources_consumed.empty()) {

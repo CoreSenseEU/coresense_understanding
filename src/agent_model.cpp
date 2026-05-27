@@ -23,7 +23,7 @@ std::string create_relation_limit2(std::string relation, std::string individual,
 void AgentModel::create_engine_model(std::string node_name, std::string engine_annotation) {
     nlohmann::json j = nlohmann::json::parse(engine_annotation);
     auto engine = j.get<coresense::understanding::model::Engine>();
-    engines.insert(engine);
+    engines[engine.name] = engine;
 //    } catch (const json::parse_error& e) {
 //      RCLCPP_ERROR(get_logger(), "Could not read Node %s annotation. Caught error: %s", node_name.c_str(), e.what());
 //    } catch (const json::type_error& e) {
@@ -74,7 +74,8 @@ void AgentModel::create_engine_relations() {
   std::map<std::string, std::set<std::string>> templates_concept;
   std::map<std::string, std::set<std::string>> templates_requirement;
 
-  for (coresense::understanding::model::Engine engine : engines) {
+  for (auto& [name, engine] : engines) {
+ // for (coresense::understanding::model::Engine engine : engines) {
     //add engine ttf to output
     engine_relations << engine.to_tff();
     // collect data for inter-engine relations

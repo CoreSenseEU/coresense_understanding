@@ -85,7 +85,7 @@ void from_json(const nlohmann::json& j, Resource& r);
 
 struct Engine {
   std::string name;
-  std::set<Template> inputs;
+  std::vector<Template> inputs;
   Modelet engine_output;
   int time_delay;
   int energy_cost;
