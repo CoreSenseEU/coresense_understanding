@@ -8,25 +8,23 @@
 
 namespace coresense::understanding::model {
 
-std::string create_relation_limit1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set);
+std::string create_relation_limit1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
 
-std::string create_relation_exist1(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set);
+std::string create_relation_exist1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
 
-std::string create_relation_exist2(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set);
+std::string create_relation_exist2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
 
-std::string create_has_no_relation1(std::string relation, std::string individual, std::string set_klass);
-std::string create_has_no_relation2(std::string relation, std::string individual, std::string set_klass);
+std::string create_has_no_relation1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
+std::string create_has_no_relation2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
 
 
 struct Requirement {
-  std::string name;
-  std::string datatype;
+  std::string klass;
   std::string value_range;
-  std::string to_tff();
   friend bool operator<(const Requirement& l, const Requirement& r)
     {
-        return std::tie(l.name, l.datatype)
-             < std::tie(r.name, r.datatype); // keep the same order
+        return std::tie(l.klass, l.value_range)
+             < std::tie(r.klass, r.value_range); // keep the same order
     }
 };
 void from_json(const nlohmann::json& j, Requirement& r);
@@ -50,14 +48,13 @@ struct Template {
 void from_json(const nlohmann::json& j, Template& t);
 
 struct Property {
-  std::string name;
-  std::string datatype;
+  std::string klass;
   std::string value;
-  std::string to_tff();
+  //std::string to_tff();
   friend bool operator<(const Property& l, const Property& r)
     {
-        return std::tie(l.name, l.datatype)
-             < std::tie(r.name, r.datatype); // keep the same order
+        return std::tie(l.klass, l.klass)
+             < std::tie(r.klass, r.klass); // keep the same order
     }
 };
 void from_json(const nlohmann::json& j, Property& p);

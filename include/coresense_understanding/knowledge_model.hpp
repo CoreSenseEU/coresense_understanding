@@ -15,8 +15,6 @@ private:
   std::map<std::string, std::set<std::string>> distinct_instances {
     {"formalism", std::set<std::string>()},
     {"representation_class", std::set<std::string>()},
-    {"requirement", std::set<std::string>()},
-    {"proptype", std::set<std::string>()},
     {"property", std::set<std::string>()},
     {"resource", std::set<std::string>()},
     {"concept", std::set<std::string>()},
@@ -28,7 +26,7 @@ public:
   bool dirty;
   std::chrono::time_point<std::chrono::system_clock> last_update;
   std::map<std::string, bool> updated;
-  std::list<std::string> klasses = {"proptype", "concept", "formalism", "representation_class"};
+  std::list<std::string> klasses = {"property", "concept", "formalism", "representation_class"};
   
   KnowledgeModel() {};
   void add_klass(std::string klass, std::string kb_response);

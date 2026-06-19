@@ -57,24 +57,25 @@ public:
   UnderstandingSystemNode() : Node("understanding_system_node") {
     set_coresense_parameter();
     if (true) {
-      query_triplestar_kb_ptr = create_client<triplestar_msgs::srv::SPARQLQuery>("/triplestar_core/query");
-      get_modelets_client_ptr = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar_core/query_services/get_modelets");
-      query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/query_reasoner");
-      start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/start_session");
-      end_session_client_ptr = create_client<coresense_msgs::srv::EndSession>("/end_session");
-      add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/add_to_session");
-      remove_from_session_client_ptr = create_client<coresense_msgs::srv::RemoveFromSession>("/remove_from_session");
-      list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/list_session");
+      query_triplestar_kb_ptr = create_client<triplestar_msgs::srv::SPARQLQuery>("/triplestar/sparql");
+      get_modelets_client_ptr = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar/query/get_modelets");
+      query_reasoner_action_client_ptr = rclcpp_action::create_client<QueryReasonerAction>(this, "/vampire/query");
+      start_session_client_ptr = create_client<coresense_msgs::srv::StartSession>("/vampire/start_session");
+      end_session_client_ptr = create_client<coresense_msgs::srv::EndSession>("/vampire/end_session");
+      add_to_session_client_ptr = create_client<coresense_msgs::srv::AddToSession>("/vampire/add_to_session");
+      remove_from_session_client_ptr = create_client<coresense_msgs::srv::RemoveFromSession>("/vampire/remove_from_session");
+      list_session_client_ptr = create_client<coresense_msgs::srv::ListSession>("/vampire/list_session");
       // wait for clients to become available 
       while (!add_to_session_client_ptr->wait_for_service(1s)
          && !end_session_client_ptr->wait_for_service(1s) 
          && !remove_from_session_client_ptr->wait_for_service(1s) 
+         && !start_session_client_ptr->wait_for_service(1s) 
          && !list_session_client_ptr->wait_for_service(1s)) {
         if (!rclcpp::ok()) {
-          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the add_knowledge service. Exiting.");
+          RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the vampire services. Exiting.");
           return; //TODO: find better way to kill this.
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/add_knowledge service not available, waiting again...");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "vampire services not available, waiting again...");
       }
       RCLCPP_INFO(get_logger(), "Connected to vampire_node");
       while (!get_modelets_client_ptr->wait_for_service(1s) ) {
@@ -82,14 +83,14 @@ public:
           RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for triplestar get_modelets service. Exiting.");
           return; //TODO: find better way to kill this.
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar_core/query_services/get_modelets service not available, waiting again...");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar/query/get_modelets service not available, waiting again...");
       }
       while (!query_triplestar_kb_ptr->wait_for_service(1s) ) {
         if (!rclcpp::ok()) {
           RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for triplestar query service. Exiting.");
           return; //TODO: find better way to kill this.
         }
-        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar_core/query service not available, waiting again...");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "/triplestar/sparql service not available, waiting again...");
       }
     understand_action_server_ptr = rclcpp_action::create_server<UnderstandAction>(
       this,
@@ -109,29 +110,6 @@ public:
     RCLCPP_INFO(get_logger(), "Waiting for 2.5s");
     rclcpp::sleep_for(std::chrono::milliseconds(2500));
     update_models();
-    if (false) {
-      std::string theo = theory_reader.get_theories();
-      std::ofstream out0("/home/alex/plansys2_ws/theory.tff");
-      out0 << theo;
-      out0.close();
-      //TODO do this later
-      //add_to_session(session_id, "understanding_theory_static", theo);
-
-
-      std::ofstream out("/home/alex/plansys2_ws/agent_model.tff");
-      out << agent_model.model;
-      out.close();
-      //rclcpp::sleep_for(std::chrono::milliseconds(3000));
-      //add_knowledge("all", knowledge.str());
-      //std::ofstream out("/tmp/all_knowlegde");
-      //out << knowledge.str();
-      //out.close();
-      //test_response_parsing();
-      //add_knowledge_internal("agent_model", agent_model);
-      //std::cout << knowledge.str();
-      //add_knowledge("theory", knowledge.str());
-      //read_package_logic("coresense_understanding", "understanding-logic/tff/modelets");
-    }
   }
 
 private:
@@ -182,25 +160,32 @@ private:
     theory_reader.read_package_logic(ament_index_cpp::get_package_share_directory("coresense_understanding"), "understanding-logic/tff/model");
   }
 
+  void dump_string(std::string path, std::string content) {
+    std::ofstream out(path);
+    out << content;
+    out.close();
+  }
 
   
   void get_modelet_snapshot() {
     RCLCPP_INFO(get_logger(), "Creating knowledge model.");
     for (std::string klass : knowledge_model.klasses) {
-      selectQueryClients[klass] = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar_core/query_services/"+klass+"_query");
+      selectQueryClients[klass] = create_client<triplestar_msgs::srv::SelectQuery>("/triplestar/query/"+klass+"_query");
       auto request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
       auto callback = [this, klass](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture future) {
+        RCLCPP_INFO(get_logger(), "Class: %s", klass.c_str());
         this->knowledge_model.add_klass(klass, future.get()->result);
         knowledge_model.updated[klass] = true;
         selectQueryClients.erase(klass);
-        RCLCPP_DEBUG(get_logger(), "Knowledge Model updated class: %s", klass.c_str());
+        RCLCPP_INFO(get_logger(), "Knowledge Model updated class: %s", klass.c_str());
       };
       selectQueryClients[klass]->async_send_request(request, callback);
     }
     auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
     auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
+      RCLCPP_INFO(get_logger(), "Class: modelets");
       this->knowledge_model.create_knowledge_model(get_modelets_future.get()->result);
-      RCLCPP_DEBUG(get_logger(), "Knowledge Model updated modelets");
+      RCLCPP_INFO(get_logger(), "Knowledge Model updated modelets");
     };
     //TODO enable multithreaded executor to make this work
     //while (!(knowledge_model.updated["concept"] && knowledge_model.updated["representation_class"] && knowledge_model.updated["formalism"])){
@@ -265,16 +250,23 @@ private:
   void start_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::StartSession>> start_session_server_ptr,
                const std::shared_ptr<rmw_request_id_t> request_header,
                const std::shared_ptr<coresense_msgs::srv::StartSession::Request> incoming_request) {
-    // special service that can call a service
+    // special service that can call 
+    RCLCPP_INFO(get_logger(), "Starting Understanding Session");
     auto start_session_cb = [this, start_session_server_ptr, request_header, incoming_request](rclcpp::Client<coresense_msgs::srv::StartSession>::SharedFuture start_session_future) {
       std::string session_id = start_session_future.get()->session_id;
       RCLCPP_INFO(get_logger(), "Creating Session %s", session_id.c_str());
       sessions.emplace(session_id, coresense::understanding::session::Session(session_id));
 
       //TODO refactor the next three lines for consistency and efficiency (session manager)
-      add_to_session(session_id, "understanding_theory", theory_reader.get_theories());
+      std::string theory = theory_reader.get_theories();
+      add_to_session(session_id, "understanding_theory", theory);
       add_to_session(session_id, "agent_model", agent_model.model);
       add_to_session(session_id, "knowledge_model", knowledge_model.model);
+      
+      dump_string("/kas_ws/theory.tff", theory);
+      dump_string("/kas_ws/agent_model.tff", agent_model.model);
+      dump_string("/kas_ws/knowledge_model.tff", knowledge_model.model);
+
       sessions[session_id].last_agent_update = agent_model.last_update;
       sessions[session_id].last_knowledge_update = knowledge_model.last_update;
       coresense_msgs::srv::StartSession::Response response;
@@ -282,7 +274,9 @@ private:
       start_session_server_ptr->send_response(*request_header, response);
     };
     auto start_session_request = std::make_shared<coresense_msgs::srv::StartSession::Request>();
+    RCLCPP_INFO(get_logger(), "Created SessionRequest");
     start_session_client_ptr->async_send_request(start_session_request, start_session_cb);
+    RCLCPP_INFO(get_logger(), "Sent SessionRequest");
   }
 
   void end_session(std::shared_ptr<rclcpp::Service<coresense_msgs::srv::EndSession>> end_session_server_ptr,

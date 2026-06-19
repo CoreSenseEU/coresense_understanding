@@ -3,16 +3,16 @@
 
 namespace coresense::understanding::agent_model {
 
-std::string create_relation_limit2(std::string relation, std::string individual, std::string set_klass,  std::set<std::string> set) {
+std::string create_relation_limit2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
-  ss << "tff(axiom_" << individual << "_" << relation << ", axiom," << std::endl 
+  ss << "tff(axiom_" << instance << "_" << relation << ", axiom," << std::endl 
      << "  ![X: " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
-     << "    " << relation << "(X, " << individual << ")" << std::endl
+     << "    " << relation << "(X, " << instance_klass << "_" << instance << ")" << std::endl
      << "    =>" << std::endl
      << "    (";
   for (std::string name : set) {
-    ss << std::endl <<"      (X = " << name << ")" << std::endl << "      |"; 
+    ss << std::endl <<"      (X = " << set_klass << "_" << name << ")" << std::endl << "      |"; 
   }
   ss.seekp(-3, ss.cur);
   ss << ")" << std::endl << "  )" << std::endl << ")." << std::endl;
@@ -100,12 +100,11 @@ void AgentModel::create_engine_relations() {
         templates_concept[concept].insert(input.name);
       }
       for (auto requirement : input.requirements) {
-        distinct_instances["requirement"].insert(requirement.name);
-        distinct_instances["proptype"].insert(requirement.datatype);
-        if (templates_requirement.find(requirement.name) == templates_requirement.end()) {
-          templates_requirement[requirement.name] = std::set<std::string>();
+        distinct_instances["property"].insert(requirement.klass);
+        if (templates_requirement.find(requirement.klass) == templates_requirement.end()) {
+          templates_requirement[requirement.klass] = std::set<std::string>();
         }
-        templates_requirement[requirement.name].insert(input.name);
+        templates_requirement[requirement.klass].insert(input.name);
       }
     } 
     // Outputs
@@ -125,12 +124,11 @@ void AgentModel::create_engine_relations() {
       imparted_concepts[concept].insert(engine.name);
     }
     for (auto property : engine.engine_output.properties) {
-      distinct_instances["property"].insert(property.name);
-      distinct_instances["proptype"].insert(property.datatype);
-      if (imparted_properties.find(property.name) == imparted_properties.end()) {
-       imparted_properties[property.name] = std::set<std::string>();
+      distinct_instances["property"].insert(property.klass);
+      if (imparted_properties.find(property.klass) == imparted_properties.end()) {
+       imparted_properties[property.klass] = std::set<std::string>();
       }
-      imparted_properties[property.name].insert(engine.name);
+      imparted_properties[property.klass].insert(engine.name);
     } 
     for (auto resource : engine.resources_consumed) {
       distinct_instances["resource"].insert(resource.name);
@@ -142,29 +140,9 @@ void AgentModel::create_engine_relations() {
   // create instance declarations and distinctness axioms
   for (auto& [key, set] : distinct_instances) {
     part_relations << create_existence_declarations(key, set);
-    part_relations << create_distinct_axiom(key + "_distinctness", set);
+    part_relations << create_distinct_axiom(key + "_distinctness", key, set);
   }
 
-  //std::string inter_relations = create_inter_engine_relations(engine_input_sizes);
-  //std::ofstream out1("/home/alex/plansys2_ws/inter_relations.tff");
-  //out1 << inter_relations;
-  //out1.close();
-  //add_knowledge_internal("inter_relations", inter_relations);
-  //add_knowledge("inter_relations", inter_relations);
-  //all_relations << create_inter_engine_relations(engine_input_sizes);
-  //std::string part_rels = part_relations.str();
-  //std::ofstream out2("/home/alex/plansys2_ws/part_relations.tff");
-  //out2 << part_rels;
-  //out2.close();
-  //add_knowledge_internal("parts", part_rels);
-  //add_knowledge("parts", part_relations.str());
-  //all_relations << part_relations.str();
-  //std::string engine_rels = engine_relations.str();
-  //std::ofstream out3("/home/alex/plansys2_ws/engine_relations.tff");
-  //out3 << engine_rels;
-  //out3.close();
-  //add_knowledge_internal("engine_relations", engine_rels);
-  //add_knowledge("engine_relations", engine_relations.str());
   all_relations << create_inter_engine_relations(engine_input_sizes);
   all_relations << part_relations.rdbuf();
   all_relations << engine_relations.rdbuf();
@@ -173,50 +151,45 @@ void AgentModel::create_engine_relations() {
   for (const auto& [requirement, templates] : templates_requirement) {
     if (!templates.empty()) {
       std::set<std::string> li(templates.begin(), templates.end());
-      all_relations << coresense::understanding::model::create_relation_limit1("is_part_of", requirement, "template", li);
+      all_relations << coresense::understanding::model::create_relation_limit1("is_part_of", "requirement_specification", requirement, "template", li);
     }
   }
   for (const auto& [rc, engines] : imparted_rcs) {
     if (!engines.empty()) {
       //TODO this is wrongly filled because it does not collect all the engine per rc ALEX
       std::set<std::string> li(engines.begin(), engines.end());
-      all_relations << create_relation_limit2("engine_imparts_representation_class", rc, "engine", li);
+      all_relations << create_relation_limit2("engine_imparts_representation_class", "representation_class", rc, "engine", li);
     }
   }
   // create concept  -> engine relation
   for (const auto& [concept, engines] : imparted_concepts) {
     if (!engines.empty()) {
       std::set<std::string> li(engines.begin(), engines.end());
-      all_relations << create_relation_limit2("engine_imparts_concept", concept, "engine", li);
+      all_relations << create_relation_limit2("engine_imparts_concept", "concept", concept, "engine", li);
     }
   }
   // create concept  -> engine relation
   for (const auto& [property, engines] : imparted_properties) {
     if (!engines.empty()) {
       std::set<std::string> li(engines.begin(), engines.end());
-      all_relations << create_relation_limit2("engine_imparts_property", property, "engine", li);
+      all_relations << create_relation_limit2("engine_imparts_property", "property", property, "engine", li);
     }
   }
   // create representation_class -> template relation
   for (const auto& [rc, templates] : templates_rc) {
     if (!templates.empty()) {
       std::set<std::string> li(templates.begin(), templates.end());
-      all_relations << create_relation_limit2("template_has_representation_class_requirement", rc, "template", li);
+      all_relations << create_relation_limit2("template_has_representation_class_requirement", "representation_class", rc, "template", li);
     }
   }
   // create concept -> template relation
   for (const auto& [concept, templates] : templates_concept) {
     if (!templates.empty()) {
       std::set<std::string> li(templates.begin(), templates.end());
-      all_relations << create_relation_limit2("template_has_concept_requirement", concept, "template", li);
+      all_relations << create_relation_limit2("template_has_concept_requirement", "concept", concept, "template", li);
     }
   }
   all_relations << std::endl;
-  //std::string rest_rels = all_relations.str();
-  //std::ofstream out4("/home/alex/plansys2_ws/rest_relations.tff");
-  //out4 << rest_rels;
-  //out4.close();
-  //add_knowledge("rest_engine_relations", engine_relations.str());
   model = all_relations.str();
   last_update = std::chrono::system_clock::now();
   dirty = false;
@@ -229,7 +202,7 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
   for(int size : sizes) {
     std::stringstream modelets;
     std::string axiom_end = "\n  )\n).\n";
-    std::string E_def = "  ![E: engine";
+    std::string E_def = "  ![E : engine";
     std::stringstream M_def;
     std::stringstream T_def;
     std::string def_end = "]:\n  (";
@@ -241,22 +214,22 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
     std::stringstream exertable_def;
     std::stringstream inputs_match;
     ss << "tff(decl_defines_input" << size << ", type," << std::endl 
-       << "  defines_input" << size << ": (";
+       << "  defines_input" << size << " : (";
 
     exert_use << "      &" << std::endl
               << "      exert" << size << "(E";
-    exertable_def << "  ![E: engine";
+    exertable_def << "  ![E : engine";
     modelet_has_property << "      (";
     M_def << ", OM" << ": modelet";
-    for(int i =1; i<= size; i++) {
-      modelet_has_property << std::endl << "        modelet_has_property(IM" << i << ", P)" << std::endl
+    for(int i = 1; i <= size; i++) {
+      modelet_has_property << std::endl << "        modelet_has_property(IM" << i << ", P, V)" << std::endl
                            << "        |";
       modelets << " * modelet";
       ss << "template * ";
-      M_def << ", IM" << i << ": modelet";
-      T_def << ", T" << i << ": template";
+      M_def << ", IM" << i << " : modelet";
+      T_def << ", T" << i << " : template";
       M_use << ", IM" << i;
-      exertable_def << ", IM" << i << ": modelet, T" << i << ": template";
+      exertable_def << ", IM" << i << " : modelet, T" << i << " : template";
       inputs_match << "      inputs_match" << "(IM" << i << ", T" << i << ")" << std::endl
                    << "      &" << std::endl;
       T_use << "T" << i << ", ";
@@ -277,14 +250,14 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
     ss << "engine) > $o" << std::endl 
        << ")." << std::endl;
     ss << "tff(decl_exert" << size << ", type," << std::endl 
-       << "  exert" << size << ": (engine" << modelets.str() << ") > modelet" << std::endl 
+       << "  exert" << size << " : (engine" << modelets.str() << ") > modelet" << std::endl 
        << ")." << std::endl;
     ss << "tff(decl_exertable" << size << ", type," << std::endl 
-       << "  exertable" << size << ": (engine" << modelets.str() << ") > $o" << std::endl 
+       << "  exertable" << size << " : (engine" << modelets.str() << ") > $o" << std::endl 
        << ")." << std::endl;
     // axioms
     ss << "tff(axiom_modelet_is_exertable" << size << ", axiom, " << std::endl
-       << E_def << M_def.str() << T_def.str() << ", R: resource" << def_end << std::endl
+       << E_def << M_def.str() << T_def.str() << ", R : resource" << def_end << std::endl
        << "    (" << std::endl
        << inputs_match.str()
        << "      defines_input" << size << "(" << T_use.str() << "E)" << std::endl
@@ -311,7 +284,7 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
        << "    modelet_has_creator(OM, E)" << axiom_end;
 
     ss << "tff(axiom_engines_may_impart_representation_classes" << size << ", axiom," << std::endl
-       << E_def << M_def.str() << ", R: representation_class"<< def_end << std::endl
+       << E_def << M_def.str() << ", R : representation_class"<< def_end << std::endl
        << exertable_and_exert.str() << std::endl
        << "      &" << std::endl
        << "      engine_imparts_representation_class(E, R)" << std::endl
@@ -320,7 +293,7 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
        << "    modelet_has_representation_class(OM, R)" << axiom_end;
        
     ss << "tff(axiom_engines_may_impart_concepts" << size << ", axiom," << std::endl
-       << E_def << M_def.str() << ", C: concept"<< def_end << std::endl
+       << E_def << M_def.str() << ", C : concept"<< def_end << std::endl
        << exertable_and_exert.str() << std::endl
        << "      &" << std::endl
        << "      engine_imparts_concept(E, C)" << std::endl
@@ -329,34 +302,34 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
        << "    modelet_models_concept(OM, C)" << axiom_end;
 
     ss << "tff(axiom_engines_may_impart_properties" << size << ", axiom," << std::endl
-       << E_def << M_def.str() << ", P: property"<< def_end << std::endl
+       << E_def << M_def.str() << ", P : property" << ", V : value" << def_end << std::endl
        << exertable_and_exert.str() << std::endl
        << "      &" << std::endl
-       << "      engine_imparts_property(E, P)" << std::endl
+       << "      engine_imparts_property(E, P, V)" << std::endl
        << "    )" << std::endl
        << "    =>" << std::endl
-       << "    modelet_has_property(OM, P)" << axiom_end;
+       << "    modelet_has_property(OM, P, V)" << axiom_end;
 
     if (size > 0) {
       ss << "tff(axiom_engines_may_transit_properties" << size << ", axiom," << std::endl
-         << E_def << M_def.str() << ", P: property"<< def_end << std::endl
+         << E_def << M_def.str() << ", P : property" << ", V : value" << def_end << std::endl
          << exertable_and_exert.str() << std::endl
          << "      &" << std::endl
          << modelet_has_property.str()
          << "    )" << std::endl
          << "    =>" << std::endl
-         << "    modelet_has_property(OM, P)" << axiom_end;
+         << "      modelet_has_property(OM, P, V)" << axiom_end;
     }
   }
   return ss.str();
 }
 
- std::string AgentModel::create_distinct_axiom(std::string label, std::set<std::string> items) {
+ std::string AgentModel::create_distinct_axiom(std::string label, std::string klass, std::set<std::string> items) {
   std::stringstream ss;
   if (items.size() > 1) {
     ss << "tff(axiom_"<< label << ", axiom, $distinct(";
     for (std::string item: items) {
-      ss << " " << item << ",";
+      ss << " " << klass << "_" << item << ",";
     }
     ss.seekp(-1, ss.cur);
     ss << "))." << std::endl;
@@ -367,10 +340,10 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
 std::string AgentModel::create_existence_declarations(std::string klass, std::set<std::string> items) {
   std::stringstream ss;
   for (std::string item: items) {
-    ss << "tff(decl_"<< item << ", type, " << item << ": " << klass << ")." << std::endl;
+    ss << "tff(decl_"<< item << ", type, " << klass << "_" << item << " : " << klass << ")." << std::endl;
   }
   return ss.str();
 }
 
 
-}
+} // end agent_model namespace

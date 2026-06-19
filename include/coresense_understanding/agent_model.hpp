@@ -15,8 +15,6 @@ private:
     {"template", std::set<std::string>()},
     {"formalism", std::set<std::string>()},
     {"representation_class", std::set<std::string>()},
-    {"requirement", std::set<std::string>()},
-    {"proptype", std::set<std::string>()},
     {"property", std::set<std::string>()},
     {"resource", std::set<std::string>()},
     {"concept", std::set<std::string>()},
@@ -33,7 +31,7 @@ public:
   void create_engine_model(std::string node_name, std::string engine_annotation);
   void create_engine_relations();
   std::string create_inter_engine_relations(std::set<int> sizes);
-  std::string create_distinct_axiom(std::string label, std::set<std::string> items);
+  std::string create_distinct_axiom(std::string label, std::string klass, std::set<std::string> items);
   std::string create_existence_declarations(std::string klass, std::set<std::string> items);
 };
 

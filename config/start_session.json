@@ -1,0 +1,16 @@
+{
+  "name": "start_understanding_session",
+  "inputs": [],
+  "engine_output": {
+    "name": "session_id",
+    "formalism" : "std::string",
+    "concepts": ["vampire_session", "understanding_session"],
+    "representation_classes": ["identifier", "string", "text"],
+    "properties": []
+  },
+  "transit_properties": [],
+  "time_delay": 0,
+  "energy_cost": 0.0005,
+  "resources_consumed": [],
+  "resources_blocked": []
+}

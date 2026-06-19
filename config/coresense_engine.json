@@ -1,25 +1,24 @@
 {
-  "name": "understanding_system_engine",
+  "name": "understanding_system",
   "inputs": [
     {
-      "name": "query_template",
+      "name": "query",
       "formalism": "understanding_action_request",
       "concepts": [],
-      "representation_classes": ["tptp_tff_rc", "logic_rc"],
+      "representation_classes": ["tptp_tff", "logic"],
       "requirements": [],
       "creator": ""
     }
   ],
   "engine_output": {
-    "name": "bt_xml_modelet",
+    "name": "bt_xml",
     "formalism" : "understanding_action_response",
     "concepts": [],
-    "representation_classes": ["behaviour_tree_rc", "plan_rc"],
+    "representation_classes": ["behaviour_tree", "plan"],
     "properties": [
       {
-        "name": "executable_property",
-        "datatype": "boolean_proptype",
-        "value": "true"
+        "klass": "executable",
+        "value": "\"true\"^^xsd:boolean"
       }
     ]
   },
@@ -29,11 +28,11 @@
   "resources_consumed": [],
   "resources_blocked": [
     {
-      "name": "cpu_resource",
+      "name": "cpu",
       "percentage": 0.5
     },
     {
-      "name": "memory_resource",
+      "name": "memory",
       "percentage": 0.001
     }
   ]

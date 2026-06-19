@@ -22,12 +22,10 @@ void KnowledgeModel::add_properties(std::string kb_response) {
   ss << kb_response;
   nlohmann::json result = nlohmann::json::parse(ss);
   for (nlohmann::json binding : result["results"]["bindings"]) {
-    std::string id = split(binding["property"]["value"].get<std::string>());
     coresense::understanding::model::Property property;
-    property.name = split(binding["propertyName"]["value"].get<std::string>());
-    property.datatype = split(binding["propertyType"]["value"].get<std::string>());
+    property.klass = split(binding["property"]["value"].get<std::string>());
     property.value = split(binding["propertyValue"]["value"].get<std::string>());
-    distinct_instances["property"].insert(property.name);
+    distinct_instances["property"].insert(property.klass);
     //TODO were to put the property object other than inside the modelet if so?
   }
 }
@@ -37,12 +35,10 @@ void KnowledgeModel::add_requirements(std::string kb_response) {
   ss << kb_response;
   nlohmann::json result = nlohmann::json::parse(ss);
   for (nlohmann::json binding : result["results"]["bindings"]) {
-    std::string id = split(binding["requirement"]["value"].get<std::string>());
     coresense::understanding::model::Requirement requirement;
-    requirement.name = split(binding["requirementName"]["value"].get<std::string>());
-    requirement.datatype = split(binding["requirementType"]["value"].get<std::string>());
+    requirement.klass = split(binding["requirement"]["value"].get<std::string>());
     requirement.value_range = split(binding["requirementValueRange"]["value"].get<std::string>());
-    distinct_instances["requirement"].insert(requirement.name);
+    distinct_instances["property"].insert(requirement.klass);
     //TODO were to put the requirement object other than the template if so?
   }
 }
@@ -77,24 +73,21 @@ void KnowledgeModel::create_knowledge_model(std::string kb_response) {
     }
     if (binding.find("property") != binding.end()) {
       coresense::understanding::model::Property property;
-      property.name = split(binding["propertyName"]["value"].get<std::string>());
-      property.datatype = split(binding["propertyType"]["value"].get<std::string>());
+      property.klass = split(binding["propertyKlass"]["value"].get<std::string>());
       property.value = split(binding["propertyValue"]["value"].get<std::string>());
       modelets[id].properties.insert(property);
-
-      distinct_instances["property"].insert(property.name);
-      distinct_instances["proptype"].insert(property.datatype);
+      distinct_instances["property"].insert(property.klass);
     }
   }
   std::stringstream ss2;
   for (std::string klass : klasses) {
     for (std::string instance : distinct_instances[klass]) {
-      ss2 << "tff(decl_" << instance << "_" << klass << ", type, " << instance << " : " << klass << ").\n";
+      ss2 << "tff(decl_" << instance << "_" << klass << ", type, " << klass << "_" << instance << " : " << klass << ").\n";
     }
   }
   for (std::string klass : {"property", "requirement"}) {
     for (std::string instance : distinct_instances[klass]) {
-      ss2 << "tff(decl_" << instance << "_" << klass << ", type, " << instance << " : " << klass << ").\n";
+      ss2 << "tff(decl_" << instance << "_" << klass << ", type, " << klass << "_" << instance << " : " << klass << ").\n";
     }
   }
   for (auto& [id, modelet] : modelets) {
