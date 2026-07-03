@@ -26,13 +26,13 @@ std::string create_relation2(std::string relation, std::string klass1, std::stri
 
 std::string create_equals_relation2(std::string relation, std::string klass1, std::string instance1, std::string klass2, std::string instance2) {
   std::stringstream ss;
-  ss << "tff(" << instance1 << "_" << relation << instance2 << ", axiom,\n  " << relation << "(" << klass1 << "_" << instance1 << ") = " << klass2 << "_" << instance2 << "\n).\n";
+  ss << "tff(" << instance1 << "_" << relation << "_" << instance2 << ", axiom,\n  " << relation << "(" << klass1 << "_" << instance1 << ") = " << klass2 << "_" << instance2 << "\n).\n";
   return ss.str();
 }
 
 std::string create_equals_relation3(std::string relation, std::string klass1, std::string instance1, std::string klass2, std::string instance2, std::string klass3, std::string instance3) {
   std::stringstream ss;
-  ss << "tff(" << instance1 << "_" << instance2 << "_" << relation << instance3 << ", axiom,\n  " << relation << "(" << klass1 << "_" << instance1 << ", "<< klass2 << "_" << instance2 << ") = " << klass3 << "_" << instance3 << "\n).\n";
+  ss << "tff(" << instance1 << "_" << instance2 << "_" << instance3 << "_" << relation << ", axiom,\n  " << relation << "(" << klass1 << "_" << instance1 << ", "<< klass2 << "_" << instance2 << ") = " << klass3 << "_" << instance3 << "\n).\n";
   return ss.str();
 }
 
@@ -87,7 +87,7 @@ std::string create_relation_exist1(std::string relation, std::string instance_kl
 
 std::string create_relation_exist2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
-  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "existence_right, axiom," << std::endl 
+  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_existence_right, axiom," << std::endl 
      << "  ![X : " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
      << "    (";
@@ -104,12 +104,18 @@ std::string create_relation_exist2(std::string relation, std::string instance_kl
 
 std::string create_triple_relation_exists(std::string relation, std::string instance_klass, std::string instance, std::set<std::string> set1, std::set<std::string> set2, std::string set1_klass, std::string set2_klass) {
   std::stringstream ss;
-  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "existence_right, axiom," << std::endl 
-     << "  ![X : " << set1_klass << ", Y :" << set2_klass << "] : " << std::endl 
+  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_existence_right, axiom," << std::endl 
+     << "  ![X : " << set1_klass << ", Y : " << set2_klass << "] : " << std::endl 
      << "  (" << std::endl
      << "    (";
-  for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
-    ss << std::endl <<"      (X = " << set1_klass << "_" << *it1 << ") && (Y = " << set2_klass << "_" << *it2 << ")" << std::endl << "      |"; 
+  if (set2_klass == "value") {
+    for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
+      ss << std::endl <<"      (X = " << set1_klass << "_" << *it1 << ") & (Y = '" << *it2 << "')" << std::endl << "      |"; 
+    }
+  } else {
+    for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
+      ss << std::endl <<"      (X = " << set1_klass << "_" << *it1 << ") & (Y = " << set2_klass << "_" << *it2 << ")" << std::endl << "      |"; 
+    }
   }
   ss.seekp(-3, ss.cur);
   ss <<     ")" << std::endl
@@ -140,7 +146,7 @@ std::string create_has_no_relation2(std::string relation, std::string instance_k
 std::string create_has_no_triple_relation(std::string relation, std::string instance_klass, std::string instance, std::string set1_klass, std::string set2_klass) {
   std::stringstream ss;
   ss << "tff(" << instance << "_has_no_" << relation <<", axiom, " << std::endl
-     << "  ~?[X : " << set1_klass << ",  Y : " << set2_klass << " ]:" << std::endl
+     << "  ~?[X : " << set1_klass << ", Y : " << set2_klass << " ]:" << std::endl
      << "    " << relation << "(" << instance_klass << "_" << instance << ", X, Y)" << std::endl
      << ")." << std::endl;
   return ss.str();
@@ -231,7 +237,7 @@ std::string Template::to_tff() {
       klasses.insert(req.klass);
       value_ranges.insert(req.value_range);
     }
-    output << create_triple_relation_exists("template_has_propert_requirement", "template", name, klasses, value_ranges, "property", "requirement_specification");
+    output << create_triple_relation_exists("template_has_property_requirement", "template", name, klasses, value_ranges, "property", "requirement_specification");
   }
   return output.str();
 }
@@ -308,13 +314,17 @@ std::string Engine::to_tff() {
     output << create_has_no_relation1("engine_imparts_concept", "engine", name, "concept");
   }
   if (!engine_output.properties.empty()) {
-    std::set<std::string> properties;
+    std::set<std::string> klasses;
+    std::set<std::string> values;
     for (Property property : engine_output.properties) {
-      properties.insert(property.klass);
+      klasses.insert(property.klass);
+      values.insert(property.value);
     }
-    output << create_relation_exist1("engine_imparts_property", "engine", name, "property", properties);
+    //output << create_relation_exist1("engine_imparts_property", "engine", name, "property", properties);
+    output << create_triple_relation_exists("engine_imparts_property", "engine", name, klasses, values, "property", "value");
   } else { // engine imparts no properties
-    output << create_has_no_relation1("engine_imparts_property", "engine", name, "property");
+    //output << create_has_no_relation1("engine_imparts_property", "engine", name, "property");
+    output << create_has_no_triple_relation("engine_imparts_property", "engine", name, "property", "value");
   }
   if (!resources_consumed.empty()) {
     std::set<std::string> resources;

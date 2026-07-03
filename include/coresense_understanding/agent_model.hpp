@@ -16,6 +16,7 @@ private:
     {"formalism", std::set<std::string>()},
     {"representation_class", std::set<std::string>()},
     {"property", std::set<std::string>()},
+    {"value", std::set<std::string>()},
     {"resource", std::set<std::string>()},
     {"concept", std::set<std::string>()},
     {"modelet", std::set<std::string>()},

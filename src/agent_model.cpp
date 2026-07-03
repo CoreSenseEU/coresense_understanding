@@ -32,7 +32,7 @@ std::string create_relation_limit3(std::string relation, std::string instance_kl
        << "      (" << std::endl
        << "        (X = " << set_klass << "_" << name << ")" << std::endl
        << "        &" << std::endl
-       << "        (V = " << value << ")" << std::endl
+       << "        (V = '" << value << "')" << std::endl
        << "      )"  << std::endl 
        << "      |"; 
   }
@@ -147,6 +147,7 @@ void AgentModel::create_engine_relations() {
     }
     for (auto property : engine.engine_output.properties) {
       distinct_instances["property"].insert(property.klass);
+      distinct_instances["value"].insert(property.value);
       if (imparted_properties.find(property.klass) == imparted_properties.end()) {
        //imparted_properties[property.klass] = std::set<std::string>();
        imparted_properties[property.klass] = std::set<std::pair<std::string, std::string>>();
@@ -355,8 +356,15 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
   std::stringstream ss;
   if (items.size() > 1) {
     ss << "tff(axiom_"<< label << ", axiom, $distinct(";
-    for (std::string item: items) {
-      ss << " " << klass << "_" << item << ",";
+    if (klass == "value") {
+      for (std::string item: items) {
+        ss << " '" << item << "',";
+      }
+
+    } else {
+      for (std::string item: items) {
+        ss << " " << klass << "_" << item << ",";
+      }
     }
     ss.seekp(-1, ss.cur);
     ss << "))." << std::endl;
@@ -367,7 +375,11 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
 std::string AgentModel::create_existence_declarations(std::string klass, std::set<std::string> items) {
   std::stringstream ss;
   for (std::string item: items) {
-    ss << "tff(decl_"<< item << ", type, " << klass << "_" << item << " : " << klass << ")." << std::endl;
+    if (klass == "value") {
+      ss << "tff(decl_"<< item.substr(item.rfind("^^xsd:")+6) << ", type, '" << item << "' : " << klass << ")." << std::endl;
+    } else {
+      ss << "tff(decl_"<< item << ", type, " << klass << "_" << item << " : " << klass << ")." << std::endl;
+    }
   }
   return ss.str();
 }
