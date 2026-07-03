@@ -8,7 +8,7 @@ const std::string REPRESENTATION_CLASS = "representation_class";
 
 std::string create_not_relation1(std::string relation, std::string klass, std::string instance) {
   std::stringstream ss;
-  ss << "tff(not_" << instance << relation << ", axiom,\n  ~" << relation << "(" << klass << "_" << instance << ")\n).\n";
+  ss << "tff(not_" << instance << "_" << relation << ", axiom,\n  ~" << relation << "(" << klass << "_" << instance << ")\n).\n";
   return ss.str();
 }
 
@@ -52,16 +52,22 @@ std::string create_relation_limit1(std::string relation, std::string instance_kl
   return ss.str();
 }
 
-std::string create_triple_relation_limit(std::string relation, std::string instance_klass, std::string instance, std::set<std::string> set1, std::set<std::string> set2, std::string set1_klass, std::string set2_klass) {
+std::string create_triple_relation_limit(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2) {
   std::stringstream ss;
   ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_limitation, axiom," << std::endl 
-     << "  ![X : " << set1_klass << ", Y : " << set2_klass << "]: " << std::endl 
+     << "  ![X : " << set_klass1 << ", Y : " << set_klass2 << "]: " << std::endl 
      << "  (" << std::endl
      << "    " << relation << "(" << instance_klass << "_" << instance << ", X, Y)" << std::endl
      << "    =>" << std::endl
      << "    (";
-  for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
-    ss << std::endl <<"      ((X = " << set1_klass << "_" << *it1 << ") && (Y = "<< set2_klass << "_" << *it2 << "))" << std::endl << "      |"; 
+  if (set_klass2 == "value") {
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = '" << entry.second << "'))" << std::endl << "      |"; 
+    }
+  } else {
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = " << set_klass2 << "_" << entry.second << "))" << std::endl << "      |"; 
+    }
   }
   ss.seekp(-3, ss.cur);
   ss << ")" << std::endl << "  )" << std::endl << ")." << std::endl;
@@ -102,19 +108,19 @@ std::string create_relation_exist2(std::string relation, std::string instance_kl
   return ss.str();
 }
 
-std::string create_triple_relation_exists(std::string relation, std::string instance_klass, std::string instance, std::set<std::string> set1, std::set<std::string> set2, std::string set1_klass, std::string set2_klass) {
+std::string create_triple_relation_exists(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2) {
   std::stringstream ss;
   ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_existence_right, axiom," << std::endl 
-     << "  ![X : " << set1_klass << ", Y : " << set2_klass << "] : " << std::endl 
+     << "  ![X : " << set_klass1 << ", Y : " << set_klass2 << "] : " << std::endl 
      << "  (" << std::endl
      << "    (";
-  if (set2_klass == "value") {
-    for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
-      ss << std::endl <<"      (X = " << set1_klass << "_" << *it1 << ") & (Y = '" << *it2 << "')" << std::endl << "      |"; 
+  if (set_klass2 == "value") {
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = '" << entry.second << "'))" << std::endl << "      |"; 
     }
   } else {
-    for (std::set<std::string>::iterator it1 = set1.begin(), it2 = set2.begin(); it1 != set1.end() && it2 != set2.end() ; ++it1, ++it2) {
-      ss << std::endl <<"      (X = " << set1_klass << "_" << *it1 << ") & (Y = " << set2_klass << "_" << *it2 << ")" << std::endl << "      |"; 
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = " << set_klass2 << "_" << entry.second << "))" << std::endl << "      |"; 
     }
   }
   ss.seekp(-3, ss.cur);
@@ -231,13 +237,11 @@ std::string Template::to_tff() {
   if (requirements.empty()) { // template has no requirements
     output << create_has_no_triple_relation("template_has_property_requirement", "template", name, "property", "requirement_specification");
   } else { // template has requirements
-    std::set<std::string> klasses;
-    std::set<std::string> value_ranges;
+    std::set<std::pair<std::string, std::string>> entries;
     for (Requirement req : requirements) {
-      klasses.insert(req.klass);
-      value_ranges.insert(req.value_range);
+      entries.insert({req.klass, req.value_range});
     }
-    output << create_triple_relation_exists("template_has_property_requirement", "template", name, klasses, value_ranges, "property", "requirement_specification");
+    output << create_triple_relation_exists("template_has_property_requirement", "template", name, entries, "property", "requirement_specification");
   }
   return output.str();
 }
@@ -273,14 +277,12 @@ std::string Modelet::to_tff() {
   if (properties.empty()) { // modelet has no properties
     output << create_has_no_triple_relation("modelet_has_property", "modelet", name, "property", "value");
   } else { // modelet has properties
-    std::set<std::string> klasses;
-    std::set<std::string> values;
+    std::set<std::pair<std::string, std::string>> entries;
     for (Property prop : properties) {
-      klasses.insert(prop.klass);
-      values.insert(prop.value);
+      entries.insert({prop.klass, prop.value});
     }
-    output << create_triple_relation_exists("modelet_has_property", "modelet", name, klasses, values, "property", "value");
-    output << create_triple_relation_limit("modelet_has_property", "modelet", name, klasses, values, "property", "value");
+    output << create_triple_relation_exists("modelet_has_property", "modelet", name, entries, "property", "value");
+    output << create_triple_relation_limit("modelet_has_property", "modelet", name, entries,  "property", "value");
   }
   return output.str();
 }
@@ -314,14 +316,12 @@ std::string Engine::to_tff() {
     output << create_has_no_relation1("engine_imparts_concept", "engine", name, "concept");
   }
   if (!engine_output.properties.empty()) {
-    std::set<std::string> klasses;
-    std::set<std::string> values;
-    for (Property property : engine_output.properties) {
-      klasses.insert(property.klass);
-      values.insert(property.value);
+    std::set<std::pair<std::string, std::string>> entries;
+    for (Property prop : engine_output.properties) {
+      entries.insert({prop.klass, prop.value});
     }
     //output << create_relation_exist1("engine_imparts_property", "engine", name, "property", properties);
-    output << create_triple_relation_exists("engine_imparts_property", "engine", name, klasses, values, "property", "value");
+    output << create_triple_relation_exists("engine_imparts_property", "engine", name, entries, "property", "value");
   } else { // engine imparts no properties
     //output << create_has_no_relation1("engine_imparts_property", "engine", name, "property");
     output << create_has_no_triple_relation("engine_imparts_property", "engine", name, "property", "value");
