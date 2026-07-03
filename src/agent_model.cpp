@@ -6,13 +6,35 @@ namespace coresense::understanding::agent_model {
 std::string create_relation_limit2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set) {
   std::stringstream ss;
   ss << "tff(axiom_" << instance << "_" << relation << ", axiom," << std::endl 
-     << "  ![X: " << set_klass << "]: " << std::endl 
+     << "  ![X : " << set_klass << "]: " << std::endl 
      << "  (" << std::endl
      << "    " << relation << "(X, " << instance_klass << "_" << instance << ")" << std::endl
      << "    =>" << std::endl
      << "    (";
   for (std::string name : set) {
     ss << std::endl <<"      (X = " << set_klass << "_" << name << ")" << std::endl << "      |"; 
+  }
+  ss.seekp(-3, ss.cur);
+  ss << ")" << std::endl << "  )" << std::endl << ")." << std::endl;
+  return ss.str();
+}
+
+std::string create_relation_limit3(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::pair<std::string, std::string>> set) {
+  std::stringstream ss;
+  ss << "tff(axiom_" << instance << "_" << relation << ", axiom," << std::endl 
+     << "  ![X : " << set_klass << ", V : value]: " << std::endl 
+     << "  (" << std::endl
+     << "    " << relation << "(X, " << instance_klass << "_" << instance << ", V)" << std::endl
+     << "    =>" << std::endl
+     << "    (";
+  for (auto [name, value] : set) {
+    ss << std::endl
+       << "      (" << std::endl
+       << "        (X = " << set_klass << "_" << name << ")" << std::endl
+       << "        &" << std::endl
+       << "        (V = " << value << ")" << std::endl
+       << "      )"  << std::endl 
+       << "      |"; 
   }
   ss.seekp(-3, ss.cur);
   ss << ")" << std::endl << "  )" << std::endl << ")." << std::endl;
@@ -69,7 +91,7 @@ void AgentModel::create_engine_relations() {
   //collect data per needed relation from all the engines
   std::map<std::string, std::set<std::string>> imparted_rcs;
   std::map<std::string, std::set<std::string>> imparted_concepts;
-  std::map<std::string, std::set<std::string>> imparted_properties;
+  std::map<std::string, std::set<std::pair<std::string, std::string>>> imparted_properties;
   std::map<std::string, std::set<std::string>> templates_rc;
   std::map<std::string, std::set<std::string>> templates_concept;
   std::map<std::string, std::set<std::string>> templates_requirement;
@@ -126,9 +148,11 @@ void AgentModel::create_engine_relations() {
     for (auto property : engine.engine_output.properties) {
       distinct_instances["property"].insert(property.klass);
       if (imparted_properties.find(property.klass) == imparted_properties.end()) {
-       imparted_properties[property.klass] = std::set<std::string>();
+       //imparted_properties[property.klass] = std::set<std::string>();
+       imparted_properties[property.klass] = std::set<std::pair<std::string, std::string>>();
       }
-      imparted_properties[property.klass].insert(engine.name);
+      //imparted_properties[property.klass].insert(engine.name);
+      imparted_properties[property.klass].insert({engine.name, property.value});
     } 
     for (auto resource : engine.resources_consumed) {
       distinct_instances["resource"].insert(resource.name);
@@ -171,8 +195,11 @@ void AgentModel::create_engine_relations() {
   // create concept  -> engine relation
   for (const auto& [property, engines] : imparted_properties) {
     if (!engines.empty()) {
-      std::set<std::string> li(engines.begin(), engines.end());
-      all_relations << create_relation_limit2("engine_imparts_property", "property", property, "engine", li);
+      //std::set<std::string> li(engines.begin(), engines.end());
+      std::set<std::pair<std:: string, std::string>> li(engines.begin(), engines.end());
+      //all_relations << create_relation_limit2("engine_imparts_property", "property", property, "engine", li);
+      all_relations << create_relation_limit3("engine_imparts_property", "property", property, "engine", li);
+      //TODO EXTPROP collect imparted properties with values
     }
   }
   // create representation_class -> template relation

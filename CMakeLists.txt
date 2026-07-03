@@ -26,6 +26,8 @@ find_package(rclpy REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(tinyxml2_vendor REQUIRED)
 find_package(nlohmann_json_schema_validator_vendor REQUIRED)
+find_package(libyaml_vendor REQUIRED)
+find_package(yaml REQUIRED)
  
 # remove warnings
 add_definitions(-w) 
@@ -59,6 +61,7 @@ target_link_libraries(
 target_link_libraries(agent_model
   model
   ${nlohmann_json_schema_validator_vendor_TARGETS}
+  yaml
   )
   
 target_link_libraries(knowledge_model
@@ -99,7 +102,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 # install python node
 install(PROGRAMS
-  scripts/understanding_system_node.py
+  scripts/requirement_enforcer_node
   DESTINATION lib/${PROJECT_NAME})
 
 # install cpp node
