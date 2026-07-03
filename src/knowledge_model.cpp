@@ -90,6 +90,9 @@ void KnowledgeModel::create_knowledge_model(std::string kb_response) {
       ss2 << "tff(decl_" << instance << "_" << klass << ", type, " << klass << "_" << instance << " : " << klass << ").\n";
     }
   }
+  //for (std::string instance : distinct_instances["value"]) {
+  //  ss2 << "tff(decl_" << instance.substr(instance.rfind("^^xsd:")+6) << "_" << klass << ", type, '" << instance << "' : " << klass << ").\n";
+  //}
   for (auto& [id, modelet] : modelets) {
     ss2 << modelet.to_tff() << std::endl;
   }

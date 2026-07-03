@@ -478,7 +478,7 @@ private:
             RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
           } else if (wrapped_result.result->code == 1) {
             RCLCPP_INFO(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
-            RCLCPP_INFO(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+            RCLCPP_DEBUG(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
           } else {
             RCLCPP_WARN(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
             RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());

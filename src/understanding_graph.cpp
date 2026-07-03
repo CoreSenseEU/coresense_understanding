@@ -56,7 +56,7 @@ std::string ConceptNode::print(std::unordered_map<std::string, std::shared_ptr<G
 }
 
 std::string ConceptNode::get_id() {
-  return "MODELET_" + name + "_" + id;
+  return "MODELET_" + name.substr(8) + "_" + id;
 }
 
 
@@ -99,7 +99,7 @@ std::string ExertnNode::print(std::unordered_map<std::string, std::shared_ptr<Gr
   for (auto modelet : modelets) {
     //TODO PRIORITY: fix naming of classes within tptp (unique per class) and without 
     std::string name = engine.inputs[count++].name;
-    tree << name.substr(0,name.size()-9) << "=\"{" << map[modelet]->get_id() << "_output}\" ";
+    tree << name << "=\"{" << map[modelet]->get_id() << "_output}\" ";
     //tree << "port_" << count++ << "=\"{" << map[modelet]->get_id() << "_port}\" ";
   }
 

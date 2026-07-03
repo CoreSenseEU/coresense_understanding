@@ -1,5 +1,4 @@
 #include "coresense_understanding/vampire_interface.hpp"
-
 namespace coresense::understanding::interfaces::vampire {
 
 std::vector<std::string> VampireInterface::parse_output(std::map<std::string, coresense::understanding::model::Engine> engines, std::string output) {
@@ -83,7 +82,7 @@ void VampireInterface::consume_answer(std::map<std::string, coresense::understan
 
 bool VampireInterface::consume_exertn(std::map<std::string, coresense::understanding::model::Engine> engines, std::unordered_map<std::string, std::shared_ptr<ns_graph::GraphNode>> & map, std::string & answer) {
   // This reads exert[0-9]+(engine, modelet1, modelet2, ..., modeletN) string and turns it into an object representation, recursively. This is the new set-less variant
-  const std::regex exert_regex = std::regex("exert(\\d+)\\(([\\w-]+)([,\\w-]+)\\)");
+  const std::regex exert_regex = std::regex("exert(\\d+)\\(engine_([\\w-]+)([,\\w-]+)\\)");
   const std::regex modelet_regex = std::regex("([\\w-]+)");
   std::smatch match;
   if (std::regex_search(answer, match, exert_regex)) {
