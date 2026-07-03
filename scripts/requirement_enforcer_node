@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import re
+
 import rclpy
 from rclpy.node import Node
 
@@ -12,6 +14,8 @@ class RequirementEnforcer(Node):
 
     def __init__(self):
         super().__init__('coresense_requirement_enforcer')
+        self.entry_pattern = re.compile('"(.*)"\\^\\^xsd:([\\w+])')
+        self.interval_pattern = re.compile('" *(\\[|\\() *(\\n.,]+) *, *([\\n.,]+) *(\\]|\\)) *"\\^\\^xsd:([\\w+])')
 
         # Create the service
         self.srv = self.create_service(
@@ -24,8 +28,86 @@ class RequirementEnforcer(Node):
 
     def handle_query(self, request, response):
         self.get_logger().info(f"Received question: {request.parameters}")
+        response.answers = []
+        for [requirement, value] in requerst.parameters:
+            req_match = self.entry_pattern.match(requirement)
+            val_match = self.entry_pattern.match(value)
+            if req_match.group(2) == val_match.group(2):
+                typ = req_match.group(2)
+                if typ == "boolean" or typ == "string":
+                    if val_match.group(1) == req_match.group(1):
+                        response.answers.append(reqirement)
+                        response.answers.append(value)
+                elif typ == "short" or typ == "unsignedShort" or typ == "long" or typ == "unsignedLong" or typ == "int" or typ == "unsignedInt" or typ == "negativeInteger" or typ == "nonNegativeInteger" or typ == "nonPositiveInteger" or typ == "integer":
+                    interval_match = self.interval_pattern.match(req_match.group(1))
+                    val = int(val_match.group(1))
+                    lower = int(interval_match.group(2))
+                    upper = int(interval_match.group(3))
+                    fits = true
+                    if interval_match(1) == '(':
+                        fits &= val > lower
+                    else:
+                        fits &= val >= lower
+                    if interval_match(4) == ')':
+                        fits &= val < upper
+                    else:
+                        fits &= val <= upper
+                    if fits:
+                        response.answers.append(reqirement)
+                        response.answers.append(value)
+                elif typ == "decimal" or typ == "float" or typ == "double" or typ == "unsignedLong" or typ == "int" or typ == "unsignedInt" or typ == "negativeInteger" or typ == "nonNegativeInteger" or typ == "nonPositiveInteger" or typ == "integer":
+                    interval_match = self.interval_pattern.match(req_match.group(1))
+                    val = float(val_match.group(1))
+                    lower = float(interval_match.group(2))
+                    upper = float(interval_match.group(3))
+                    fits = true
+                    if interval_match(1) == '(':
+                        fits &= val > lower
+                    else:
+                        fits &= val >= lower
+                    if interval_match(4) == ')':
+                        fits &= val < upper
+                    else:
+                        fits &= val <= upper
+                    if fits:
+                        response.answers.append(reqirement)
+                        response.answers.append(value)
+# remaining xsd types
+#                match req_match.group(1):
+#                    case "unsignedByte":
+#                        pass
+#                    case "byte":
+#                        pass
+#                    case "date":
+#                        pass
+#                    case "time":
+#                        pass
+#                    case "datetime":
+#                        pass
+#                    case "duration":
+#                        pass
+#                    case "gDay":
+#                        pass
+#                    case "gMonth":
+#                        pass
+#                    case "gMonthDay":
+#                        pass
+#                    case "gYear":
+#                        pass
+#                    case "gYearMonth":
+#                        pass
+#                    case "hexBinary":
+#                        pass
+#                    case "NOTATION":
+#                        pass
+#                    case "anyURI":
+#                        pass
+#                    case "base64Binary":
+#                        pass
+#                    case "QName":
+#                        pass
 
-        response.answers = [f"c{i}" if p == "" else p for i,p in enumerate(request.parameters)]
+        #response.answers = [f"c{i}" if p == "" else p for i,p in enumerate(request.parameters)]
         # response.answers = []
 
         self.get_logger().info(f"Returning answers: {response.answers}")
