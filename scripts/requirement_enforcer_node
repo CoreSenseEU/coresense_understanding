@@ -14,8 +14,8 @@ class RequirementEnforcer(Node):
 
     def __init__(self):
         super().__init__('coresense_requirement_enforcer')
-        self.entry_pattern = re.compile('"(.*)"\\^\\^xsd:([\\w+])')
-        self.interval_pattern = re.compile('" *(\\[|\\() *(\\n.,]+) *, *([\\n.,]+) *(\\]|\\)) *"\\^\\^xsd:([\\w+])')
+        self.entry_pattern = re.compile('"(.*)"\\^\\^xsd:([\\w]+)')
+        self.interval_pattern = re.compile('" *(\\[|\\() *([\\d.,]+) *, *([\\d.,]+) *(\\]|\\)) *"\\^\\^xsd:([\\w]+)')
 
         # Create the service
         self.srv = self.create_service(
@@ -29,7 +29,7 @@ class RequirementEnforcer(Node):
     def handle_query(self, request, response):
         self.get_logger().info(f"Received question: {request.parameters}")
         response.answers = []
-        for [requirement, value] in requerst.parameters:
+        for [requirement, value] in list(zip(request.parameters[0::2], request.parameters[1::2])):
             req_match = self.entry_pattern.match(requirement)
             val_match = self.entry_pattern.match(value)
             if req_match.group(2) == val_match.group(2):
@@ -39,39 +39,41 @@ class RequirementEnforcer(Node):
                         response.answers.append(reqirement)
                         response.answers.append(value)
                 elif typ == "short" or typ == "unsignedShort" or typ == "long" or typ == "unsignedLong" or typ == "int" or typ == "unsignedInt" or typ == "negativeInteger" or typ == "nonNegativeInteger" or typ == "nonPositiveInteger" or typ == "integer":
-                    interval_match = self.interval_pattern.match(req_match.group(1))
+                    interval_match = self.interval_pattern.match(requirement)
                     val = int(val_match.group(1))
                     lower = int(interval_match.group(2))
                     upper = int(interval_match.group(3))
-                    fits = true
-                    if interval_match(1) == '(':
+                    fits = True
+                    if interval_match.group(1) == '(':
                         fits &= val > lower
                     else:
                         fits &= val >= lower
-                    if interval_match(4) == ')':
+                    if interval_match.group(4) == ')':
                         fits &= val < upper
                     else:
                         fits &= val <= upper
                     if fits:
-                        response.answers.append(reqirement)
+                        response.answers.append(requirement)
                         response.answers.append(value)
-                elif typ == "decimal" or typ == "float" or typ == "double" or typ == "unsignedLong" or typ == "int" or typ == "unsignedInt" or typ == "negativeInteger" or typ == "nonNegativeInteger" or typ == "nonPositiveInteger" or typ == "integer":
-                    interval_match = self.interval_pattern.match(req_match.group(1))
+                elif typ == "decimal" or typ == "float" or typ == "double":
+                    interval_match = self.interval_pattern.match(requirement)
                     val = float(val_match.group(1))
                     lower = float(interval_match.group(2))
                     upper = float(interval_match.group(3))
-                    fits = true
-                    if interval_match(1) == '(':
+                    fits = True
+                    if interval_match.group(1) == '(':
                         fits &= val > lower
                     else:
                         fits &= val >= lower
-                    if interval_match(4) == ')':
+                    if interval_match.group(4) == ')':
                         fits &= val < upper
                     else:
                         fits &= val <= upper
                     if fits:
-                        response.answers.append(reqirement)
+                        response.answers.append(requirement)
                         response.answers.append(value)
+                else:
+                  self.get_logger().warn(f"Comparison for type {typ} is not implemented yet.")
 # remaining xsd types
 #                match req_match.group(1):
 #                    case "unsignedByte":
