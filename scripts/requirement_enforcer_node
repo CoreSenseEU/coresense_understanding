@@ -14,8 +14,9 @@ class RequirementEnforcer(Node):
 
     def __init__(self):
         super().__init__('coresense_requirement_enforcer')
-        self.entry_pattern = re.compile('"(.*)"\\^\\^xsd:([\\w]+)')
-        self.interval_pattern = re.compile('" *(\\[|\\() *([\\d.,]+) *, *([\\d.,]+) *(\\]|\\)) *"\\^\\^xsd:([\\w]+)')
+        self.entry_pattern = re.compile('\'"(.*)"\\^\\^xsd:([\\w]+)\'')
+        self.interval_pattern = re.compile('\'" *(\\[|\\() *([\\d.,]+) *, *([\\d.,]+) *(\\]|\\)) *"\\^\\^xsd:([\\w]+)\'')
+        self.half_order_pattern = re.compile('\'" *(<|<=|>|>=|==|!=) *([0-9]+[.,][0-9]+) *"\\^\\^xsd:[\\w]+\'')
 
         # Create the service
         self.srv = self.create_service(
@@ -29,49 +30,113 @@ class RequirementEnforcer(Node):
     def handle_query(self, request, response):
         self.get_logger().info(f"Received question: {request.parameters}")
         response.answers = []
-        for [requirement, value] in list(zip(request.parameters[0::2], request.parameters[1::2])):
+        for [value, requirement] in list(zip(request.parameters[0::2], request.parameters[1::2])):
             req_match = self.entry_pattern.match(requirement)
             val_match = self.entry_pattern.match(value)
             if req_match.group(2) == val_match.group(2):
                 typ = req_match.group(2)
                 if typ == "boolean" or typ == "string":
                     if val_match.group(1) == req_match.group(1):
+                        response.answers.append(value)
                         response.answers.append(reqirement)
-                        response.answers.append(value)
                 elif typ == "short" or typ == "unsignedShort" or typ == "long" or typ == "unsignedLong" or typ == "int" or typ == "unsignedInt" or typ == "negativeInteger" or typ == "nonNegativeInteger" or typ == "nonPositiveInteger" or typ == "integer":
-                    interval_match = self.interval_pattern.match(requirement)
                     val = int(val_match.group(1))
-                    lower = int(interval_match.group(2))
-                    upper = int(interval_match.group(3))
-                    fits = True
-                    if interval_match.group(1) == '(':
-                        fits &= val > lower
-                    else:
-                        fits &= val >= lower
-                    if interval_match.group(4) == ')':
-                        fits &= val < upper
-                    else:
-                        fits &= val <= upper
-                    if fits:
-                        response.answers.append(requirement)
-                        response.answers.append(value)
-                elif typ == "decimal" or typ == "float" or typ == "double":
                     interval_match = self.interval_pattern.match(requirement)
+                    half_order_match = self.half_order_pattern.match(requirement)
+                    if interval_match:
+                        lower = int(interval_match.group(2))
+                        upper = int(interval_match.group(3))
+                        fits = True
+                        if interval_match.group(1) == '(':
+                            fits &= val > lower
+                        else:
+                            fits &= val >= lower
+                        if interval_match.group(4) == ')':
+                            fits &= val < upper
+                        else:
+                            fits &= val <= upper
+                        if fits:
+                            response.answers.append(value)
+                            response.answers.append(requirement)
+                    elif half_order_match:
+                        check = int(half_order_match.group(2))
+                        if (half_order_match.group(1) == "<"):
+                            if val < check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "<=":
+                            if val <= check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == ">":
+                            if val > check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == ">=":
+                            if val >= check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "!=":
+                            if val != check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "==":
+                            if val == check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        else:
+                            pass
+                            # wrong comparitor
+
+                elif typ == "decimal" or typ == "float" or typ == "double":
                     val = float(val_match.group(1))
-                    lower = float(interval_match.group(2))
-                    upper = float(interval_match.group(3))
-                    fits = True
-                    if interval_match.group(1) == '(':
-                        fits &= val > lower
-                    else:
-                        fits &= val >= lower
-                    if interval_match.group(4) == ')':
-                        fits &= val < upper
-                    else:
-                        fits &= val <= upper
-                    if fits:
-                        response.answers.append(requirement)
-                        response.answers.append(value)
+                    interval_match = self.interval_pattern.match(requirement)
+                    half_order_match = self.half_order_pattern.match(requirement)
+                    if interval_match:
+                        lower = float(interval_match.group(2))
+                        upper = float(interval_match.group(3))
+                        fits = True
+                        if interval_match.group(1) == '(':
+                            fits &= val > lower
+                        else:
+                            fits &= val >= lower
+                        if interval_match.group(4) == ')':
+                            fits &= val < upper
+                        else:
+                            fits &= val <= upper
+                        if fits:
+                            response.answers.append(value)
+                            response.answers.append(requirement)
+                    elif half_order_match:
+                        check = float(half_order_match.group(2))
+                        if (half_order_match.group(1) == "<"):
+                            if val < check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "<=":
+                            if val <= check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == ">":
+                            if val > check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == ">=":
+                            if val >= check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "!=":
+                            if val != check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        elif half_order_match.group(1) == "==":
+                            if val == check:
+                                response.answers.append(value)
+                                response.answers.append(requirement)
+                        else:
+                            pass
+                            # wrong comparitor
+
                 else:
                   self.get_logger().warn(f"Comparison for type {typ} is not implemented yet.")
 # remaining xsd types
