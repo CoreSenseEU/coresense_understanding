@@ -344,6 +344,8 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
          << exertable_and_exert.str() << std::endl
          << "      &" << std::endl
          << modelet_has_property.str()
+         << "      &" << std::endl
+         << "~engine_blocks_property_transit(E, P)" << std::endl
          << "    )" << std::endl
          << "    =>" << std::endl
          << "      modelet_has_property(OM, P, V)" << axiom_end;

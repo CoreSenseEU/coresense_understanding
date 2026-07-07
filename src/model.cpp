@@ -197,12 +197,12 @@ void from_json(const nlohmann::json& j, Resource& r) {
 void from_json(const nlohmann::json& j, Engine& e) {
   j.at("name").get_to(e.name);
   j.at("inputs").get_to(e.inputs);
+  j.at("blocked_properties").get_to(e.blocked_properties);
   j.at("time_delay").get_to(e.time_delay);
   j.at("energy_cost").get_to(e.energy_cost);
   j.at("engine_output").get_to(e.engine_output);
   j.at("resources_consumed").get_to(e.resources_consumed);
   j.at("resources_blocked").get_to(e.resources_blocked);
-  j.at("transit_properties").get_to(e.transit_properties);
 }
 
 
@@ -314,6 +314,11 @@ std::string Engine::to_tff() {
     output << create_relation_exist1("engine_imparts_concept", "engine", name, "concept", engine_output.concepts);
   } else { // engine imparts no concepts
     output << create_has_no_relation1("engine_imparts_concept", "engine", name, "concept");
+  }
+  if (!blocked_properties.empty()) {
+    output << create_relation_exist1("engine_blocks_property_transit", "engine", name, "property", blocked_properties);
+  } else { // engine imparts no concepts
+    output << create_has_no_relation1("engine_blocks_property_transit", "engine", name, "property");
   }
   if (!engine_output.properties.empty()) {
     std::set<std::pair<std::string, std::string>> entries;

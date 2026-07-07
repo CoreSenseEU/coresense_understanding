@@ -86,7 +86,7 @@ struct Engine {
   Modelet engine_output;
   int time_delay;
   int energy_cost;
-  std::set<std::string> transit_properties;
+  std::set<std::string> blocked_properties;
   std::set<Resource> resources_consumed;
   std::set<Resource> resources_blocked;
   std::string to_tff();
