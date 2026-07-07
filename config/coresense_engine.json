@@ -22,7 +22,7 @@
       }
     ]
   },
-  "transit_properties": [],
+  "blocked_properties": [],
   "time_delay": 5,
   "energy_cost": 0.0005,
   "resources_consumed": [],
