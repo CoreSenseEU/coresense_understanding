@@ -358,9 +358,14 @@ private:
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const UnderstandAction::Goal> goal)
   {
-    RCLCPP_INFO(get_logger(), "Received goal request with order %s in session %s.", goal->target_modelet.c_str(), goal->session_id.c_str());
-    (void)uuid;
-    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    if (sessions.count(goal->session_id)) {
+      RCLCPP_INFO(get_logger(), "Received goal request with order %s for session %s.", goal->target_modelet.c_str(), goal->session_id.c_str());
+      (void)uuid;
+      return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    } else {
+      RCLCPP_WARN(get_logger(), "Received goal request with order %s for non-existing session %s.", goal->target_modelet.c_str(), goal->session_id.c_str());
+      return rclcpp_action::GoalResponse::REJECT;
+    }
   }
 
   rclcpp_action::CancelResponse cancel_goal(
