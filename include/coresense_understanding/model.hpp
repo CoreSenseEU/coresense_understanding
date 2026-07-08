@@ -7,15 +7,27 @@
 #include <nlohmann/json.hpp>
 
 namespace coresense::understanding::model {
-
+std::string create_relation1(std::string relation, std::string klass, std::string instance);
+std::string create_not_relation1(std::string relation, std::string klass, std::string instance);
 std::string create_relation_limit1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
-
 std::string create_relation_exist1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
+std::string create_has_no_relation1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
 
+std::string create_relation2(std::string relation, std::string klass1, std::string instance1, std::string klass2, std::string instance2);
+std::string create_equals_relation2(std::string relation, std::string klass1, std::string instance1, std::string klass2, std::string instance2);
+std::string create_has_no_relation2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
 std::string create_relation_exist2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass,  std::set<std::string> set);
 
-std::string create_has_no_relation1(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
-std::string create_has_no_relation2(std::string relation, std::string instance_klass, std::string instance, std::string set_klass);
+std::string create_triple_relation_limit_fixed_first(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2);
+std::string create_triple_relation_limit_fixed_second(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2);
+std::string create_has_no_triple_relation(std::string relation, std::string instance_klass, std::string instance, std::string set1_klass, std::string set2_klass);
+std::string create_triple_relation_exists(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2);
+
+
+std::string create_equals_relation3(std::string relation, std::string klass1, std::string instance1, std::string klass2, std::string instance2, std::string klass3, std::string instance3);
+
+
+
 
 
 struct Requirement {

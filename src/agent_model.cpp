@@ -92,9 +92,10 @@ void AgentModel::create_engine_relations() {
   std::map<std::string, std::set<std::string>> imparted_rcs;
   std::map<std::string, std::set<std::string>> imparted_concepts;
   std::map<std::string, std::set<std::pair<std::string, std::string>>> imparted_properties;
+  std::map<std::string, std::set<std::string>> blocked_properties;
   std::map<std::string, std::set<std::string>> templates_rc;
   std::map<std::string, std::set<std::string>> templates_concept;
-  std::map<std::string, std::set<std::string>> templates_requirement;
+  std::map<std::string, std::set<std::pair<std::string, std::string>>> templates_requirement;
 
   for (auto& [name, engine] : engines) {
  // for (coresense::understanding::model::Engine engine : engines) {
@@ -123,10 +124,11 @@ void AgentModel::create_engine_relations() {
       }
       for (auto requirement : input.requirements) {
         distinct_instances["property"].insert(requirement.klass);
+        distinct_instances["requirement_specification"].insert(requirement.value_range);
         if (templates_requirement.find(requirement.klass) == templates_requirement.end()) {
-          templates_requirement[requirement.klass] = std::set<std::string>();
+          templates_requirement[requirement.klass] = std::set<std::pair<std::string, std::string>>();
         }
-        templates_requirement[requirement.klass].insert(input.name);
+        templates_requirement[requirement.klass].insert({input.name, requirement.value_range});
       }
     } 
     // Outputs
@@ -149,10 +151,8 @@ void AgentModel::create_engine_relations() {
       distinct_instances["property"].insert(property.klass);
       distinct_instances["value"].insert(property.value);
       if (imparted_properties.find(property.klass) == imparted_properties.end()) {
-       //imparted_properties[property.klass] = std::set<std::string>();
        imparted_properties[property.klass] = std::set<std::pair<std::string, std::string>>();
       }
-      //imparted_properties[property.klass].insert(engine.name);
       imparted_properties[property.klass].insert({engine.name, property.value});
     } 
     for (auto resource : engine.resources_consumed) {
@@ -162,6 +162,14 @@ void AgentModel::create_engine_relations() {
       distinct_instances["resource"].insert(resource.name);
     } 
   }
+  // blocked properties
+  //for (auto property : blocked_properties) {
+  //  distinct_instances["property"].insert(property);
+    //if (blocked_properties.find(property) == blocked_properties.end()) {
+    // blocked_properties[property] = std::set<std::string>();
+    //}
+    //blocked_properties[property].insert(name);
+  //} 
   // create instance declarations and distinctness axioms
   for (auto& [key, set] : distinct_instances) {
     part_relations << create_existence_declarations(key, set);
@@ -173,10 +181,11 @@ void AgentModel::create_engine_relations() {
   all_relations << engine_relations.rdbuf();
   
   // These encode the property->engine direction 1->n
-  for (const auto& [requirement, templates] : templates_requirement) {
+  for (const auto& [property, templates] : templates_requirement) {
     if (!templates.empty()) {
-      std::set<std::string> li(templates.begin(), templates.end());
-      all_relations << coresense::understanding::model::create_relation_limit1("is_part_of", "requirement_specification", requirement, "template", li);
+      std::set<std::pair<std::string, std::string>> li(templates.begin(), templates.end());
+      // property is the klass of requirements
+      all_relations << coresense::understanding::model::create_triple_relation_limit_fixed_second("template_has_property_requirement", "property", property, li, "template", "requirement_specification");
     }
   }
   for (const auto& [rc, engines] : imparted_rcs) {
@@ -196,10 +205,8 @@ void AgentModel::create_engine_relations() {
   // create concept  -> engine relation
   for (const auto& [property, engines] : imparted_properties) {
     if (!engines.empty()) {
-      //std::set<std::string> li(engines.begin(), engines.end());
-      std::set<std::pair<std:: string, std::string>> li(engines.begin(), engines.end());
-      //all_relations << create_relation_limit2("engine_imparts_property", "property", property, "engine", li);
-      all_relations << create_relation_limit3("engine_imparts_property", "property", property, "engine", li);
+      std::set<std::pair<std::string, std::string>> li(engines.begin(), engines.end());
+      all_relations << coresense::understanding::model::create_triple_relation_limit_fixed_second("engine_imparts_property", "property", property, li, "engine", "value");
       //TODO EXTPROP collect imparted properties with values
     }
   }
@@ -358,7 +365,7 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
   std::stringstream ss;
   if (items.size() > 1) {
     ss << "tff(axiom_"<< label << ", axiom, $distinct(";
-    if (klass == "value") {
+    if ((klass == "value") || (klass == "requirement_specification"))  {
       for (std::string item: items) {
         ss << " '" << item << "',";
       }
@@ -377,7 +384,7 @@ std::string AgentModel::create_inter_engine_relations(std::set<int> sizes) {
 std::string AgentModel::create_existence_declarations(std::string klass, std::set<std::string> items) {
   std::stringstream ss;
   for (std::string item: items) {
-    if (klass == "value") {
+    if ((klass == "value") || (klass == "requirement_specification")) {
       ss << "tff(decl_"<< item.substr(item.rfind("^^xsd:")+6) << ", type, '" << item << "' : " << klass << ")." << std::endl;
     } else {
       ss << "tff(decl_"<< item << ", type, " << klass << "_" << item << " : " << klass << ")." << std::endl;

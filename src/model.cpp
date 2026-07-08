@@ -52,15 +52,36 @@ std::string create_relation_limit1(std::string relation, std::string instance_kl
   return ss.str();
 }
 
-std::string create_triple_relation_limit(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2) {
+std::string create_triple_relation_limit_fixed_first(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2) {
   std::stringstream ss;
-  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_limitation, axiom," << std::endl 
+  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_limitation_fixed_first, axiom," << std::endl 
      << "  ![X : " << set_klass1 << ", Y : " << set_klass2 << "]: " << std::endl 
      << "  (" << std::endl
      << "    " << relation << "(" << instance_klass << "_" << instance << ", X, Y)" << std::endl
      << "    =>" << std::endl
      << "    (";
-  if (set_klass2 == "value") {
+  if ((set_klass2 == "value") || (set_klass2 == "requirement_specification")) {
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = '" << entry.second << "'))" << std::endl << "      |"; 
+    }
+  } else {
+    for (auto entry : set) {
+      ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = " << set_klass2 << "_" << entry.second << "))" << std::endl << "      |"; 
+    }
+  }
+  ss.seekp(-3, ss.cur);
+  ss << ")" << std::endl << "  )" << std::endl << ")." << std::endl;
+  return ss.str();
+}
+std::string create_triple_relation_limit_fixed_second(std::string relation, std::string instance_klass, std::string instance, std::set<std::pair<std::string, std::string>> set, std::string set_klass1, std::string set_klass2) {
+  std::stringstream ss;
+  ss << "tff(axiom_" << instance_klass << "_" << instance << "_" << relation << "_limitation_fixed_second, axiom," << std::endl 
+     << "  ![X : " << set_klass1 << ", Y : " << set_klass2 << "]: " << std::endl 
+     << "  (" << std::endl
+     << "    " << relation << "(X, " << instance_klass << "_" << instance << ", Y)" << std::endl
+     << "    =>" << std::endl
+     << "    (";
+  if ((set_klass2 == "value") || (set_klass2 == "requirement_specification")) {
     for (auto entry : set) {
       ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = '" << entry.second << "'))" << std::endl << "      |"; 
     }
@@ -114,7 +135,7 @@ std::string create_triple_relation_exists(std::string relation, std::string inst
      << "  ![X : " << set_klass1 << ", Y : " << set_klass2 << "] : " << std::endl 
      << "  (" << std::endl
      << "    (";
-  if (set_klass2 == "value") {
+  if ((set_klass2 == "value") || (set_klass2 == "requirement_specification")) {
     for (auto entry : set) {
       ss << std::endl <<"      ((X = " << set_klass1 << "_" << entry.first << ") & (Y = '" << entry.second << "'))" << std::endl << "      |"; 
     }
@@ -282,7 +303,7 @@ std::string Modelet::to_tff() {
       entries.insert({prop.klass, prop.value});
     }
     output << create_triple_relation_exists("modelet_has_property", "modelet", name, entries, "property", "value");
-    output << create_triple_relation_limit("modelet_has_property", "modelet", name, entries,  "property", "value");
+    output << create_triple_relation_limit_fixed_first("modelet_has_property", "modelet", name, entries,  "property", "value");
   }
   return output.str();
 }
