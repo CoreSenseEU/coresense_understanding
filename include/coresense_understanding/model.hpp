@@ -50,7 +50,7 @@ struct Template {
   //std::list<std::string> locations;
   //std::list<std::string> extents;
   std::set<Requirement> requirements;
-  std::string to_tff();
+  std::string to_tff(std::string engine);
   friend bool operator<(const Template& l, const Template& r)
     {
         return std::tie(l.name, l.formalism)

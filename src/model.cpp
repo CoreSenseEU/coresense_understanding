@@ -233,36 +233,37 @@ std::string create_declaration(std::string klass, std::string instance) {
   return output.str();
 }
 
-std::string Template::to_tff() {
+std::string Template::to_tff(std::string engine) {
   std::stringstream output, req_set;
-  output << create_equals_relation2("template_formalism_requirement", "template", name, "formalism", formalism );
+  output << create_equals_relation2("template_formalism_requirement", "template", engine + "_" + name, "formalism", formalism );
   //output << "tff(" << name << "_formalism_requirement, axiom,\n  template_formalism_requirement(" << name << ") = " << formalism << "\n).\n";
   if (representation_classes.empty()) {
-    output << create_has_no_relation1("template_has_representation_class_requirement", "template", name, "representation_class");
+    output << create_has_no_relation1("template_has_representation_class_requirement", "template", engine + "_" + name, "representation_class");
   } else { // template has representation_classes
-    output << create_relation_limit1("template_has_representation_class_requirement", "template", name, "representation_class", representation_classes);
+    output << create_relation_limit1("template_has_representation_class_requirement", "template", engine + "_" + name, "representation_class", representation_classes);
   }
   if (concepts.empty()) {
-    output << create_has_no_relation1("template_has_concept_requirement", "template", name, "concept");
+    output << create_has_no_relation1("template_has_concept_requirement", "template", engine + "_" + name, "concept");
   } else { // template has concepts
-    output << create_relation_limit1("template_has_concept_requirement", "template", name, "concept", concepts);
+    output << create_relation_limit1("template_has_concept_requirement", "template", engine + "_" + name, "concept", concepts);
   }
   if (creator != "") {
-    output << create_relation2("template_has_creator_requirement", "template", name, "engine", creator );
+    output << create_relation2("template_has_creator_requirement", "template", engine + "_" + name, "engine", creator );
     //output << "tff(" << name << "_template_has_creator_requirement, axiom,\n  template_has_creator_requirement(" << name << ", " << creator << ")\n).\n";
   } else { // template has no creators
-    output << create_has_no_relation1("template_has_creator_requirement", "template", name, "engine");
+    output << create_has_no_relation1("template_has_creator_requirement", "template", engine + "_" + name, "engine");
     //output << "tff(" << name << "_template_has_no_creator_requirement, axiom,\n  ~?[E : engine]:\n    template_has_creator_requirement(" << name << ", E)\n).\n";
   }
   // property requirements
   if (requirements.empty()) { // template has no requirements
-    output << create_has_no_triple_relation("template_has_property_requirement", "template", name, "property", "requirement_specification");
+    // TODO PRIORITY: this is done preamturely
+    output << create_has_no_triple_relation("template_has_property_requirement", "template", engine + "_" + name, "property", "requirement_specification");
   } else { // template has requirements
     std::set<std::pair<std::string, std::string>> entries;
     for (Requirement req : requirements) {
       entries.insert({req.klass, req.value_range});
     }
-    output << create_triple_relation_exists("template_has_property_requirement", "template", name, entries, "property", "requirement_specification");
+    output << create_triple_relation_exists("template_has_property_requirement", "template", engine + "_" + name, entries, "property", "requirement_specification");
   }
   return output.str();
 }
@@ -318,8 +319,8 @@ std::string Engine::to_tff() {
     templates << "tff(" << name << "_input_definition_axiom, axiom,\n  defines_input" << inputs.size() << "(";
     for (Template templ : inputs) {
       //TODO PRIORITY this can lead to duplicate template definitions when engines define identically named templates
-      output << templ.to_tff();
-      templates << "template_" << templ.name << ", ";
+      output << templ.to_tff(name);
+      templates << "template_" << name << "_" << templ.name << ", ";
     }
     templates << "engine_" << name << ")\n).\n";
     output << templates.str();

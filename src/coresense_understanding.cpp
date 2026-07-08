@@ -427,7 +427,6 @@ private:
       RCLCPP_ERROR(get_logger(), "Action server not available after waiting or rejected goal (this needs better error handling)");
       auto understanding_result = std::make_shared<UnderstandAction::Result>();
       understanding_result->result = "Reasoner not available";
-      //TODO create separate error and result fields?
       understanding_goal_handle->abort(understanding_result);
     } 
   }
@@ -483,7 +482,7 @@ private:
             RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
           } else if (wrapped_result.result->code == 1) {
             RCLCPP_INFO(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
-            RCLCPP_DEBUG(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
+            RCLCPP_INFO(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());
           } else {
             RCLCPP_WARN(get_logger(), "Result message is: %s", wrapped_result.result->code_msg.c_str());
             RCLCPP_WARN(get_logger(), "Reasoner output is:\n%s", wrapped_result.result->result.c_str());

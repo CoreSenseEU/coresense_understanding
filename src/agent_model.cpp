@@ -106,21 +106,22 @@ void AgentModel::create_engine_relations() {
     // Inputs
     engine_input_sizes.insert(engine.inputs.size());
     for (auto input : engine.inputs) {
-      distinct_instances["template"].insert(input.name);
+      auto input_name = name + "_" + input.name;
+      distinct_instances["template"].insert(input_name);
       distinct_instances["formalism"].insert(input.formalism);
       for (std::string representation_class : input.representation_classes) {
         distinct_instances["representation_class"].insert(representation_class);
         if (templates_rc.find(representation_class) == templates_rc.end()) {
           templates_rc[representation_class] = std::set<std::string>();
         }
-        templates_rc[representation_class].insert(input.name);
+        templates_rc[representation_class].insert(input_name);
       }
       for (std::string concept : input.concepts) {
         distinct_instances["concept"].insert(concept);
         if (templates_concept.find(concept) == templates_concept.end()) {
           templates_concept[concept] = std::set<std::string>();
         }
-        templates_concept[concept].insert(input.name);
+        templates_concept[concept].insert(input_name);
       }
       for (auto requirement : input.requirements) {
         distinct_instances["property"].insert(requirement.klass);
@@ -128,7 +129,7 @@ void AgentModel::create_engine_relations() {
         if (templates_requirement.find(requirement.klass) == templates_requirement.end()) {
           templates_requirement[requirement.klass] = std::set<std::pair<std::string, std::string>>();
         }
-        templates_requirement[requirement.klass].insert({input.name, requirement.value_range});
+        templates_requirement[requirement.klass].insert({input_name, requirement.value_range});
       }
     } 
     // Outputs
