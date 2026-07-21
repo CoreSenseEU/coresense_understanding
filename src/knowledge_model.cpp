@@ -7,6 +7,7 @@ std::string split(std::string iri) {
   return iri.substr(pos + 1);
 }
 
+// Adds existing instances to the knowledge_model's distinct_instances sets of the respective klass.
 void KnowledgeModel::add_klass(std::string klass, std::string kb_response) {
   std::stringstream ss;
   ss << kb_response;
@@ -16,7 +17,7 @@ void KnowledgeModel::add_klass(std::string klass, std::string kb_response) {
     distinct_instances[klass].insert(id);
   }
 }
-
+// This is not used
 void KnowledgeModel::add_properties(std::string kb_response) {
   std::stringstream ss;
   ss << kb_response;
@@ -30,6 +31,7 @@ void KnowledgeModel::add_properties(std::string kb_response) {
   }
 }
 
+// This is not used
 void KnowledgeModel::add_requirements(std::string kb_response) {
   std::stringstream ss;
   ss << kb_response;
@@ -73,8 +75,9 @@ void KnowledgeModel::create_knowledge_model(std::string kb_response) {
     }
     if (binding.find("property") != binding.end()) {
       coresense::understanding::model::Property property;
-      property.klass = split(binding["propertyKlass"]["value"].get<std::string>());
-      property.value = split(binding["propertyValue"]["value"].get<std::string>());
+      //TODO remove the http paths/namespaces?
+      property.klass = split(binding["propertyClass"]["value"].get<std::string>());
+      property.value = "\"" + split(binding["propertyValue"]["value"].get<std::string>()) + "\"^^xsd:" + split(binding["propertyValue"]["datatype"].get<std::string>());
       modelets[id].properties.insert(property);
       distinct_instances["property"].insert(property.klass);
     }

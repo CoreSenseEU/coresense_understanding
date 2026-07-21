@@ -184,6 +184,7 @@ private:
     auto get_modelets_request = std::make_shared<triplestar_msgs::srv::SelectQuery::Request>();
     auto get_modelets_cb = [this](rclcpp::Client<triplestar_msgs::srv::SelectQuery>::SharedFuture get_modelets_future) {
       RCLCPP_INFO(get_logger(), "Class: modelets");
+      RCLCPP_INFO(get_logger(), "%s", get_modelets_future.get()->result.c_str());
       this->knowledge_model.create_knowledge_model(get_modelets_future.get()->result);
       RCLCPP_INFO(get_logger(), "Knowledge Model updated modelets");
     };
