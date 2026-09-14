@@ -1,0 +1,40 @@
+#include "call_{{ name_sanitized }}_service.hpp"
+
+void Call{{ name_sanitized_camel }}Service::set_coresense_parameter() {
+  const std::string path = ament_index_cpp::get_package_share_directory("coresense_modelet_interfaces") + "/config/call_{{ name_sanitized }}_service.json";
+  const std::ifstream input_stream(path, std::ios_base::binary);
+
+  if (input_stream.fail()) {
+    throw std::runtime_error("Failed to open call_{{ name_sanitized }}_service.json");
+  }
+  std::stringstream buffer;
+  buffer << input_stream.rdbuf();
+  if(auto node = node_.lock()) {
+    node->declare_parameter("coresense_engine", buffer.str());
+  }
+}
+
+bool Call{{ name_sanitized_camel }}Service::setRequest(Request::SharedPtr& request)
+{
+  {% for parameter in parameters %}
+  getInput("{{ parameter }}", request->{{parameter}});
+  return true;
+  {% endfor %}
+}
+
+BT::NodeStatus Call{{ name_sanitized }}Service::onResponseReceived(const Response::SharedPtr& response)
+{
+  {% for output in outputs %}
+    setOutput("{{ output }}", response->{{ output }}); 
+  {% endfor %}
+  return BT::NodeStatus::SUCCESS;
+}
+
+BT::NodeStatus Call{{ name_sanitized_camel }}Service::onFailure(BT::ServiceNodeErrorCode error)
+{
+  RCLCPP_ERROR(logger(), "{{ name }} service failed with error: %d", error);
+  return BT::NodeStatus::FAILURE;
+}
+
+//-----------------------------------------------------------
+

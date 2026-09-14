@@ -1,0 +1,12 @@
+service_wrappers:
+# - ['service type', 'name']
+  - ['coresense_msgs/StartSession', '/coresense/understanding/start_session']
+  - ['coresense_msgs/AddKnowledge', '/coresense/understanding/add_knowledge']
+
+triplestar_modelet_retrieval:
+# - ['message type']
+  - ['sensor_msgs/Range']
+  - ['decision_msgs/CueArray']
+  - ['decision_msgs/AlternativeArray']
+
+

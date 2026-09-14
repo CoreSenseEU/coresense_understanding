@@ -1,10 +1,9 @@
-#ifndef CS_UNDERSTANDING_GET_{{ package }}_{{ typ }}_MODELET_HPP_
-#define CS_UNDERSTANDING_GET_{{ package }}_{{ typ }}_MODELET_HPP_
+#ifndef CS_UNDERSTANDING_CALL_{{ name_sanitized.upper() }}_SERVICE_HPP_
+#define CS_UNDERSTANDING_CALL__{{ name_sanitized.upper() }}_SERVICE_HPP_
 
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
-#include "{{ package }}/msg/{{ typ_snake }}.hpp"
-#include "triplestar_msgs/srv/select_query.hpp"
+#include "{{ package }}/srv/{{ typ_snake }}.hpp"
 #include <behaviortree_ros2/bt_service_node.hpp>
 #include <string>
 #include <iostream>
@@ -12,14 +11,14 @@
 #include <filesystem>
 
 
-class Get{{ package }}_{{ typ }}ModeletNode : public BT::RosServiceNode<triplestar_msgs::srv::SelectQuery>
+class Call{{ name_sanitized_camel }}Service : public BT::RosServiceNode<triplestar_msgs::srv::SelectQuery>
 {
 public:
-  explicit Get{{ package }}_{{ typ }}ModeletNode(const std::string& name, const BT::NodeConfig& config,
+  explicit Call{{ name_sanitized_camel }}Service(const std::string& name, const BT::NodeConfig& config,
                const BT::RosNodeParams& params)
-    : BT::RosServiceNode<triplestar_msgs::srv::SelectQuery>(name, config, params)
+    : BT::RosServiceNode<{{ package }}::srv::{{ typ }}>(name, config, params)
   {
-    setServiceName("/triplestar/query/get_modelets");
+    setServiceName("{{ name }}");
   }
 
   /**
@@ -30,19 +29,23 @@ public:
    * @return PortsList Containing basic ports along with node-specific ports
    */
   static BT::PortsList providedPorts()
-  {    
-    return providedBasicPorts({ 
-        BT::InputPort<std::string>(
-          "modelet_id",
-          "ID of modelet to retrieve"),
-        BT::OutputPort<{{ package }}::msg::{{ typ }}>(
-            "modelet",
-            "Retrieved modelet")
+  {
+    return providedBasicPorts({
+      {% for [parameter, typ] in parameters %}
+        BT::InputPort<{{ typ }}>(
+          "{{ parameter }}",
+          ""),
+      {% endfor %}
+      {% for [output, typ] in outputs %}
+        BT::OutputPort<{{ typ }}>(
+            "{{ output }}",
+            "")
         });
+      {% endfor %}
   }
 
   void set_coresense_parameter();
-  /** 
+  /**
    * @brief Required callback that allows the user to set the goal message.
    *
    * @param goal The goal to be sent to the action server.
@@ -52,21 +55,19 @@ public:
    */
   bool setRequest(Request::SharedPtr& request) override;
 
-  /** 
+  /**
    * @brief Required callback invoked when the result is received by the server.
-   * 
+   *
    * It is up to the user to define if the action returns SUCCESS or FAILURE.
    */
   BT::NodeStatus onResponseReceived(const Response::SharedPtr& response) override;
 
   /**
-   * @brief Optional callback invoked when something goes wrong. 
+   * @brief Optional callback invoked when something goes wrong.
    *
    * It must return either SUCCESS or FAILURE.
    */
   BT::NodeStatus onFailure(BT::ServiceNodeErrorCode error) override;
-
-  {{ package }}::msg::{{ typ }} create_modelet_from_json(std::string json_string);
 
 private:
 

@@ -1,13 +1,15 @@
 {
-  "name": "Get{{ package }}_msg_{{ typ }}Modelet",
+  "name": "Call{{ name_sanitized_camel }}Service",
   "inputs": [
+  {% for input in inputs %}
     {
-      "name": "modelet_id",
-      "formalism" : "ros:msg:std_msgs/msg/String",
+      "name": {{ input.name }},
+      "formalism": {{ input.formalism }},
       "concepts": [],
-      "representation_classes": ["string", "id", "modelet_id"],
+      "representation_classes": [],
       "requirements": []
-    }
+    },
+  {% endfor %}
   ],
   "engine_output": {
     "name": "modelet",

@@ -3,14 +3,14 @@
 #include "behaviortree_ros2/plugins.hpp"
 
 #include <coresense_modelet_interfaces/base64.h>
-#include <coresense_modelet_interfaces/get_{{package}}_{{ name }}_modelet.hpp>
+#include <coresense_modelet_interfaces/get_{{package}}_{{ typ_snake }}_modelet.hpp>
 
-void Get{{ package }}_{{ name_camel }}ModeletNode::set_coresense_parameter() {
-  const std::string path = ament_index_cpp::get_package_share_directory("coresense_modelet_interfaces") + "/config/get_{{ package }}_{{ name }}_modelet.json";
+void Get{{ package }}_{{ typ }}ModeletNode::set_coresense_parameter() {
+  const std::string path = ament_index_cpp::get_package_share_directory("coresense_modelet_interfaces") + "/config/get_{{ package }}_{{ typ_snake }}_modelet.json";
   const std::ifstream input_stream(path, std::ios_base::binary);
 
   if (input_stream.fail()) {
-    throw std::runtime_error("Failed to open get_{{ package }}_{{ name }}_modelet.json");
+    throw std::runtime_error("Failed to open get_{{ package }}_{{ typ_snake }}_modelet.json");
   }
   std::stringstream buffer;
   buffer << input_stream.rdbuf();
@@ -26,7 +26,7 @@ void Get{{ package }}_{{ name_camel }}ModeletNode::set_coresense_parameter() {
    * @return false if the request should not be sent. In that case,
    * RosActionNode::onFailure(INVALID_GOAL) will be called.
    */
-bool Get{{ package }}_{{ name_camel }}ModeletNode::setRequest(Request::SharedPtr& request) {
+bool Get{{ package }}_{{ typ }}ModeletNode::setRequest(Request::SharedPtr& request) {
   std::string modelet_id;
   getInput("modelet_id", modelet_id);
   triplestar_msgs::msg::QuerySubstitution substitution;
@@ -38,9 +38,9 @@ bool Get{{ package }}_{{ name_camel }}ModeletNode::setRequest(Request::SharedPtr
 }
 
 
-{{ package }}::msg::{{ name_camel }} Get{{ package }}_{{ name_camel }}ModeletNode::create_modelet_from_json(std::string json_string) {
-  rclcpp::Serialization<{{ package }}::msg::{{ name_camel }}> deSerializer;
-  {{ package }}::msg::{{ name_camel }} modelet;
+{{ package }}::msg::{{ typ }} Get{{ package }}_{{ typ }}ModeletNode::create_modelet_from_json(std::string json_string) {
+  rclcpp::Serialization<{{ package }}::msg::{{ typ }}> deSerializer;
+  {{ package }}::msg::{{ typ }} modelet;
   std::stringstream ss;
   ss << json_string;
   nlohmann::json result = nlohmann::json::parse(ss);
@@ -65,7 +65,7 @@ bool Get{{ package }}_{{ name_camel }}ModeletNode::setRequest(Request::SharedPtr
    * 
    * It is up to the user to define if the action returns SUCCESS or FAILURE.
    */
-BT::NodeStatus Get{{ package }}_{{ name_camel }}ModeletNode::onResponseReceived(const Response::SharedPtr& response) {
+BT::NodeStatus Get{{ package }}_{{ typ }}ModeletNode::onResponseReceived(const Response::SharedPtr& response) {
   setOutput("modelet", create_modelet_from_json(response->result));
   return BT::NodeStatus::SUCCESS;
 }
@@ -75,12 +75,12 @@ BT::NodeStatus Get{{ package }}_{{ name_camel }}ModeletNode::onResponseReceived(
    *
    * It must return either SUCCESS or FAILURE.
    */
-BT::NodeStatus Get{{ package }}_{{ name_camel }}ModeletNode::onFailure(BT::ServiceNodeErrorCode error) {
+BT::NodeStatus Get{{ package }}_{{ typ }}ModeletNode::onFailure(BT::ServiceNodeErrorCode error) {
     RCLCPP_ERROR(logger(), "Error: %d", error);
     return BT::NodeStatus::FAILURE;
 }
 
 
 // Register this node as a plugin with the BT factory
-CreateRosNodePlugin(Get{{ package }}_{{ name_camel }}ModeletNode, "Get{{ package }}_{{ name_camel }}ModeletAction");
+CreateRosNodePlugin(Get{{ package }}_{{ typ }}ModeletNode, "Get{{ package }}_{{ typ }}ModeletAction");
 
