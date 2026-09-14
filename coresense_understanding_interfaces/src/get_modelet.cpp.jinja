@@ -2,11 +2,11 @@
 
 #include "behaviortree_ros2/plugins.hpp"
 
-#include <coresense_modelet_interfaces/base64.h>
-#include <coresense_modelet_interfaces/get_{{package}}_{{ typ_snake }}_modelet.hpp>
+#include <coresense_understanding_interfaces/base64.h>
+#include <coresense_understanding_interfaces/get_{{package}}_{{ typ_snake }}_modelet.hpp>
 
 void Get{{ package }}_{{ typ }}ModeletNode::set_coresense_parameter() {
-  const std::string path = ament_index_cpp::get_package_share_directory("coresense_modelet_interfaces") + "/config/get_{{ package }}_{{ typ_snake }}_modelet.json";
+  const std::string path = ament_index_cpp::get_package_share_directory("coresense_understanding_interfaces") + "/config/get_{{ package }}_{{ typ_snake }}_modelet.json";
   const std::ifstream input_stream(path, std::ios_base::binary);
 
   if (input_stream.fail()) {
