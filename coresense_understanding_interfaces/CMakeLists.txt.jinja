@@ -13,9 +13,8 @@ find_package(pluginlib REQUIRED)
 find_package(btcpp_ros2_interfaces REQUIRED)
 
 find_package(triplestar_msgs REQUIRED)
-
-{% for modelet in modelets %}
-find_package({{ modelet.package }} REQUIRED)
+{% for package in packages %}
+find_package({{ package }} REQUIRED)
 {% endfor %}
 
 
@@ -35,8 +34,8 @@ set(DEPENDENCIES
   behaviortree_ros2::behaviortree_ros2
   ${btcpp_ros2_interfaces_TARGETS}
   ${triplestar_msgs_TARGETS}
-{% for modelet in modelets %}
-  ${ {{- modelet.package }}_TARGETS}
+{% for package in packages %}
+  ${ {{- package }}_TARGETS}
 {% endfor %}
 )
 
@@ -56,12 +55,30 @@ target_include_directories(get_{{ modelet.package}}_{{ modelet.typ_snake }}_mode
 
 {% endfor %}
 
+{% for service in services %}
+add_library(call_{{ service.name_sanitized }}_service_plugin SHARED src/call_{{ service.name_sanitized }}_service.cpp)
+target_compile_definitions(call_{{ service.name_sanitized }}_service_plugin PRIVATE  BT_PLUGIN_EXPORT )
+target_link_libraries(call_{{ service.name_sanitized }}_service_plugin
+  ${pluginlib_TARGETS}
+  ${DEPENDENCIES}
+  ament_index_cpp::ament_index_cpp
+)
+
+target_include_directories(call_{{ service.name_sanitized }}_service_plugin PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+{% endfor %}
 
 ###############
 ### Install targets and directories
 install(TARGETS
 {% for modelet in modelets %}
   get_{{ modelet.package }}_{{ modelet.typ_snake }}_modelet_plugin
+{% endfor %}
+{% for service in services %}
+  call_{{ service.name_sanitized }}_service_plugin
 {% endfor %}
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -78,6 +95,9 @@ install(DIRECTORY
 install(TARGETS
 {% for modelet in modelets %}
   get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin
+{% endfor %}
+{% for service in services %}
+  call_{{ service.name_sanitized }}_service_plugin
 {% endfor %}
   LIBRARY DESTINATION share/${PROJECT_NAME}/bt_plugins
   ARCHIVE DESTINATION share/${PROJECT_NAME}/bt_plugins

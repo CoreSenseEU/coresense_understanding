@@ -18,7 +18,7 @@
   <depend>behaviortree_cpp</depend>
   <depend>btcpp_ros2_interfaces</depend>
 
-{% for package in modelets|map(attribute='package')|unique %}
+{% for package in packages %}
   <depend>{{ package }}</depend>
 {% endfor %}
 

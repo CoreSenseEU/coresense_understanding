@@ -1,4 +1,5 @@
-#include "call_{{ name_sanitized }}_service.hpp"
+#include "behaviortree_ros2/plugins.hpp"
+#include "coresense_understanding_interfaces/call_{{ name_sanitized }}_service.hpp"
 
 void Call{{ name_sanitized_camel }}Service::set_coresense_parameter() {
   const std::string path = ament_index_cpp::get_package_share_directory("coresense_modelet_interfaces") + "/config/call_{{ name_sanitized }}_service.json";
@@ -17,15 +18,15 @@ void Call{{ name_sanitized_camel }}Service::set_coresense_parameter() {
 bool Call{{ name_sanitized_camel }}Service::setRequest(Request::SharedPtr& request)
 {
   {% for parameter in parameters %}
-  getInput("{{ parameter }}", request->{{parameter}});
-  return true;
+  getInput("{{ parameter[1] }}", request->{{ parameter[1] }});
   {% endfor %}
+  return true;
 }
 
-BT::NodeStatus Call{{ name_sanitized }}Service::onResponseReceived(const Response::SharedPtr& response)
+BT::NodeStatus Call{{ name_sanitized_camel }}Service::onResponseReceived(const Response::SharedPtr& response)
 {
   {% for output in outputs %}
-    setOutput("{{ output }}", response->{{ output }}); 
+    setOutput("{{ output[1] }}", response->{{ output[1] }}); 
   {% endfor %}
   return BT::NodeStatus::SUCCESS;
 }
@@ -37,4 +38,7 @@ BT::NodeStatus Call{{ name_sanitized_camel }}Service::onFailure(BT::ServiceNodeE
 }
 
 //-----------------------------------------------------------
+
+// Register this node as a plugin with the BT factory
+CreateRosNodePlugin(Call{{ name_sanitized_camel }}Service, "Call{{ name_sanitized_camel }}ServiceAction");
 

@@ -1,5 +1,5 @@
 #ifndef CS_UNDERSTANDING_CALL_{{ name_sanitized.upper() }}_SERVICE_HPP_
-#define CS_UNDERSTANDING_CALL__{{ name_sanitized.upper() }}_SERVICE_HPP_
+#define CS_UNDERSTANDING_CALL_{{ name_sanitized.upper() }}_SERVICE_HPP_
 
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
@@ -11,7 +11,7 @@
 #include <filesystem>
 
 
-class Call{{ name_sanitized_camel }}Service : public BT::RosServiceNode<triplestar_msgs::srv::SelectQuery>
+class Call{{ name_sanitized_camel }}Service : public BT::RosServiceNode<{{ package }}::srv::{{ typ }}>
 {
 public:
   explicit Call{{ name_sanitized_camel }}Service(const std::string& name, const BT::NodeConfig& config,
@@ -31,14 +31,14 @@ public:
   static BT::PortsList providedPorts()
   {
     return providedBasicPorts({
-      {% for [parameter, typ] in parameters %}
-        BT::InputPort<{{ typ }}>(
-          "{{ parameter }}",
+      {% for parameter in parameters %}
+        BT::InputPort<{{ 'std::'+parameter[0] if parameter[0] in ['string'] else parameter[0] }}>(
+          "{{ parameter[1] }}",
           ""),
       {% endfor %}
-      {% for [output, typ] in outputs %}
-        BT::OutputPort<{{ typ }}>(
-            "{{ output }}",
+      {% for output in outputs %}
+        BT::OutputPort<{{ 'std::'+output[0] if output[0] in ['string'] else output[0] }}>(
+            "{{ output[1] }}",
             "")
         });
       {% endfor %}
@@ -74,3 +74,4 @@ private:
 };
 
 #endif
+

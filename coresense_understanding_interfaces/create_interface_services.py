@@ -33,8 +33,8 @@ def get_service_description(lines, package, typ, name):
     service_description = {
             'package': package,
             'name': name,
-            'name_sanitized': name.replace('/', '_'),
-            'name_sanitized_camel': ''.join(word.capitalize() for word in name.split('/')),
+            'name_sanitized': name.replace('/', '_').lstrip('_'),
+            'name_sanitized_camel': ''.join(word.capitalize() for word in name.replace('/','_').split('_')),
             'typ': typ,
             'typ_snake': ros_camel_to_snake(typ),
             'parameters': [],
@@ -83,11 +83,13 @@ if __name__ == '__main__':
     todo = None
     services = []
     modelets = []
+    packages = []
     with open('interfaces_config.yaml') as interface_config_file:
         todo = yaml.safe_load(interface_config_file)
     # collect service descriptions
     for [service_type, name] in todo['service_wrappers']:
         package, typ = service_type.split('/')
+        packages.append(package)
         share_dir = get_package_share_directory(package)
         file_path = join(share_dir, 'srv', typ + '.srv')
         with open(file_path) as service_file:
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     # collect modelet descriptions
     for [message_type] in todo['triplestar_modelet_retrieval']:
         package, typ = message_type.split('/')
+        packages.append(package)
         share_dir = get_package_share_directory(package)
         file_path = join(share_dir, 'msg', typ + '.msg')
         with open(file_path) as message_file:
@@ -103,7 +106,7 @@ if __name__ == '__main__':
     for file in global_files:
         template = env.get_template(file)
         with open(file.rpartition('.jinja')[0], 'w') as f:
-            f.write(template.render({'modelets': modelets}))
+            f.write(template.render({'modelets': modelets, 'services': services, 'packages': list(set(packages))}))
     # write modelet files
     for modelet in modelets:
         for file in per_modelet_files:
@@ -115,4 +118,14 @@ if __name__ == '__main__':
             with open(target_file, 'w') as f:
                 f.write(template.render(modelet))
 
+    # write service files
+    for service in services:
+        for file in per_service_files:
+            template = env.get_template(file)
+            path, template_name = split(file)
+            file_name = splitext(template_name)[0][5:]
+            target_file = join(path, 'call_' + service['name_sanitized'] + '_' + file_name)
+
+            with open(target_file, 'w') as f:
+                f.write(template.render(service))
 

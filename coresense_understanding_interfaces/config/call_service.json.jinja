@@ -1,37 +1,21 @@
 {
   "name": "Call{{ name_sanitized_camel }}Service",
   "inputs": [
-  {% for input in inputs %}
+  {% for parameter in parameters %}
     {
-      "name": {{ input.name }},
-      "formalism": {{ input.formalism }},
+      "name": "{{ parameter[1] }}",
+      "formalism" : "{{ parameter[0] }}",
       "concepts": [],
       "representation_classes": [],
       "requirements": []
     },
-  {% endfor %}
+    {% endfor %}
   ],
   "engine_output": {
-    "name": "modelet",
-    "formalism" : "ros:msg:{{ package }}/msg/{{ typ }}",
-    "concepts": [
-{% for concept in concepts -%}
-      "{{ concept }}"
-      {% if not loop.last %}, {% endif %}
-{%- endfor %}
-    ],
-    "representation_classes": [
-{% for representation_class in representation_classes %}
-      "{{ representation_class }}"
-      {% if not loop.last %}, {% endif %}
-{% endfor %}
-    ],
-    "properties": [
-{% for property in properties %}
-      "{{ property }}"
-      {% if not loop.last %}, {% endif %}
-{% endfor %}
-    ]
+    "name": "{{ outputs[0][1] }}",
+    "formalism" : "ros:msg:{{ outputs[0][0] }}",
+    "concepts": [],
+    "representation_classes": []
   },
   "transit_properties": [],
   "time_delay": 0.2,
@@ -39,3 +23,4 @@
   "resources_consumed": [],
   "resources_blocked": []
 }
+

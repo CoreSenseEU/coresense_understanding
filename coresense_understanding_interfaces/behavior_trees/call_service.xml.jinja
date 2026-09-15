@@ -1,0 +1,6 @@
+<root BTCPP_format="4">
+  <BehaviorTree ID="Call{{ name_sanitized_camel }}Service">
+    <Call{{ name_sanitized_camel }}ServiceAction {% for parameter in parameters %}{{ parameter[1] }}="{{ parameter[1] }}" {% endfor %} {{ outputs[0][1] }}="{ {{- outputs[0][1] -}} }"}} />
+  </BehaviorTree>
+</root>
+
