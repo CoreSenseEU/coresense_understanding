@@ -41,15 +41,15 @@ set(DEPENDENCIES
 )
 
 {% for modelet in modelets %}
-add_library(get_{{ modelet.package}}_{{ modelet.typ }}_modelet_plugin SHARED src/get_{{ modelet.package}}_{{ modelet.typ }}_modelet.cpp)
-target_compile_definitions(get_{{ modelet.package}}_{{ modelet.typ }}_modelet_plugin PRIVATE  BT_PLUGIN_EXPORT )
-target_link_libraries(get_{{ modelet.package}}_{{ modelet.typ }}_modelet_plugin
+add_library(get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin SHARED src/get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet.cpp)
+target_compile_definitions(get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin PRIVATE  BT_PLUGIN_EXPORT )
+target_link_libraries(get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin
   ${pluginlib_TARGETS}
   ${DEPENDENCIES}
   ament_index_cpp::ament_index_cpp
 )
 
-target_include_directories(get_{{ modelet.package}}_{{ modelet.typ }}_modelet_plugin PUBLIC
+target_include_directories(get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -61,7 +61,7 @@ target_include_directories(get_{{ modelet.package}}_{{ modelet.typ }}_modelet_pl
 ### Install targets and directories
 install(TARGETS
 {% for modelet in modelets %}
-  get_{{ modelet.package }}_{{ modelet.typ }}_modelet_plugin
+  get_{{ modelet.package }}_{{ modelet.typ_snake }}_modelet_plugin
 {% endfor %}
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -77,7 +77,7 @@ install(DIRECTORY
 # Install plugins for other packages to load
 install(TARGETS
 {% for modelet in modelets %}
-  get_{{ modelet.package}}_{{ modelet.typ }}_modelet_plugin
+  get_{{ modelet.package}}_{{ modelet.typ_snake }}_modelet_plugin
 {% endfor %}
   LIBRARY DESTINATION share/${PROJECT_NAME}/bt_plugins
   ARCHIVE DESTINATION share/${PROJECT_NAME}/bt_plugins

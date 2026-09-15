@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 from os.path import splitext, split, join
+import re
 import yaml
 from jinja2 import Environment, PackageLoader, select_autoescape, FileSystemLoader
 from ament_index_python.packages import get_package_share_directory
@@ -13,6 +14,21 @@ env = Environment(
 env.trim_blocks = True
 #env.lstrip_blocks = True
 
+output_format = r'\1_\2'
+# insert an underscore before any upper case letter
+# which is not followed by another upper case letter
+stage1_input_pattern = re.compile(r'(.)([A-Z][a-z]+)')
+
+# insert an underscore before any upper case letter
+# which is preseded by a lower case letter or number
+stage2_input_pattern = re.compile(r'([a-z0-9])([A-Z])')
+
+def ros_camel_to_snake(text):
+    text = stage1_input_pattern.sub(output_format, text)
+    text = stage2_input_pattern.sub(output_format, text)
+    return text.lower() 
+
+
 def get_service_description(lines, package, typ, name):
     service_description = {
             'package': package,
@@ -20,7 +36,7 @@ def get_service_description(lines, package, typ, name):
             'name_sanitized': name.replace('/', '_'),
             'name_sanitized_camel': ''.join(word.capitalize() for word in name.split('/')),
             'typ': typ,
-            'typ_snake': typ,
+            'typ_snake': ros_camel_to_snake(typ),
             'parameters': [],
             'outputs': []
             }
@@ -41,7 +57,7 @@ def get_message_description(lines, package, typ):
     message_description = {
             'package': package,
             'typ': typ,
-            'typ_snake': typ,
+            'typ_snake': ros_camel_to_snake(typ),
             'fields': []
             }
     for line in lines:
@@ -69,28 +85,32 @@ if __name__ == '__main__':
     modelets = []
     with open('interfaces_config.yaml') as interface_config_file:
         todo = yaml.safe_load(interface_config_file)
+    # collect service descriptions
     for [service_type, name] in todo['service_wrappers']:
         package, typ = service_type.split('/')
         share_dir = get_package_share_directory(package)
         file_path = join(share_dir, 'srv', typ + '.srv')
         with open(file_path) as service_file:
             services.append(get_service_description(service_file, package, typ, name))
+    # collect modelet descriptions
     for [message_type] in todo['triplestar_modelet_retrieval']:
         package, typ = message_type.split('/')
         share_dir = get_package_share_directory(package)
         file_path = join(share_dir, 'msg', typ + '.msg')
         with open(file_path) as message_file:
             modelets.append(get_message_description(message_file, package, typ))
+    # write common files
     for file in global_files:
         template = env.get_template(file)
         with open(file.rpartition('.jinja')[0], 'w') as f:
             f.write(template.render({'modelets': modelets}))
+    # write modelet files
     for modelet in modelets:
         for file in per_modelet_files:
             template = env.get_template(file)
             path, template_name = split(file)
             file_name = splitext(template_name)[0][4:]
-            target_file = join(path, 'get_' + modelet['package']+ '_' + modelet['typ'] + '_' + file_name)
+            target_file = join(path, 'get_' + modelet['package']+ '_' + modelet['typ_snake'] + '_' + file_name)
 
             with open(target_file, 'w') as f:
                 f.write(template.render(modelet))
