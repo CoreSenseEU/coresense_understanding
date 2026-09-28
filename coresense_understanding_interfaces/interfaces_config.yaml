@@ -1,12 +1,24 @@
 service_wrappers:
-# - ['service type', 'name']
-  - ['coresense_msgs/StartSession', '/coresense/understanding/start_session']
-  - ['coresense_msgs/AddKnowledge', '/coresense/understanding/add_knowledge']
-
+# Short example based on https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Cpp-Service-And-Client.html
+# - {typ: 'example_interfaces_srv/add_two_ints', name: 'add_two_ints', inputs: [{name: 'a'}, {name:'b'}], output: {field: 'sum'}}
+#
+# Extended Example based on https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Cpp-Service-And-Client.html
+# - typ: 'exmple_interfaces/add_two_ints' # service type
+#   name: 'add_to_ints' # service name
+#   inputs: # service request fields
+#     - name: 'a' # input parameter name
+#       concepts: ['whole_number', 'number'] # associated classes in your world model
+#       representation_classes: ['integer'] # associated classes in your processing model
+#       requirements: # input parameter requirements, example
+#         - typ: 'minimum_number_requirement' # requirement type
+#         - value_range: '>5' # value range description, e.g. '>5', '[4,6)', '=4'
+#     - name: 'b' # input parameter name
+#       concepts: ['whole_number', 'number'] # associated classes in your world model
+#       representation_classes: ['integer'] # associated classes in your processing model
+#   output:
+#     field: 'sum' # chosed service response field
+#     concepts: ['sum', 'whole_number', 'number'] # associated classes in your world model
+#     representation_classes: ['integer'] # associated classes in your processing model
 triplestar_modelet_retrieval:
-# - ['message type']
-  - ['sensor_msgs/Range']
-  - ['decision_msgs/CueArray']
-  - ['decision_msgs/AlternativeArray']
-
-
+# - {typ: 'message type', concepts: [], representation_classes: []}
+#  - {typ: 'sensor_msgs/Range', concepts: [], representation_classes: []}
