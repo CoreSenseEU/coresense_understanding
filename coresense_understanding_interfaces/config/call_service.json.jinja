@@ -3,19 +3,19 @@
   "inputs": [
   {% for parameter in parameters %}
     {
-      "name": "{{ parameter[1] }}",
-      "formalism" : "{{ parameter[0] }}",
-      "concepts": [],
-      "representation_classes": [],
-      "requirements": []
+      "name": "{{ parameter.name }}",
+      "formalism" : "ros:msg:{{ parameter.ros_typ if not parameter.package else parameter.package + "/" + parameter.ros_typ }}",
+      "concepts": [{% for concept in concepts %}"{{ concept }}", {% endfor %}],
+      "representation_classes": [{% for rc in representation_classes %}"{{ rc }}", {% endfor %}],
+      "requirements": [{% for rc in representation_classes %}"{{ rc }}", {% endfor %}]
     },
     {% endfor %}
   ],
   "engine_output": {
-    "name": "{{ outputs[0][1] }}",
-    "formalism" : "ros:msg:{{ outputs[0][0] }}",
-    "concepts": [],
-    "representation_classes": []
+    "name": "{{ output.name }}",
+    "formalism" : "ros:msg:{{ output.ros_typ if not output.package else output.package + "/" + output.ros_typ }}",
+    "concepts": [{% for concept in output.concepts %}"{{ concept }}", {% endfor %}],
+    "representation_classes": [{% for rc in output.representation_classes %}"{{ rc }}", {% endfor %}]
   },
   "transit_properties": [],
   "time_delay": 0.2,

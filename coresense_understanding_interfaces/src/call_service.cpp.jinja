@@ -18,16 +18,14 @@ void Call{{ name_sanitized_camel }}Service::set_coresense_parameter() {
 bool Call{{ name_sanitized_camel }}Service::setRequest(Request::SharedPtr& request)
 {
   {% for parameter in parameters %}
-  getInput("{{ parameter[1] }}", request->{{ parameter[1] }});
+  getInput("{{ parameter.name }}", request->{{ parameter.name }});
   {% endfor %}
   return true;
 }
 
 BT::NodeStatus Call{{ name_sanitized_camel }}Service::onResponseReceived(const Response::SharedPtr& response)
 {
-  {% for output in outputs %}
-    setOutput("{{ output[1] }}", response->{{ output[1] }}); 
-  {% endfor %}
+  setOutput("{{ output.name }}", response->{{ output.name }}); 
   return BT::NodeStatus::SUCCESS;
 }
 

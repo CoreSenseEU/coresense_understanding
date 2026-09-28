@@ -23,6 +23,25 @@ stage1_input_pattern = re.compile(r'(.)([A-Z][a-z]+)')
 # which is preseded by a lower case letter or number
 stage2_input_pattern = re.compile(r'([a-z0-9])([A-Z])')
 
+
+
+ros_type_map = {
+        "bool": "bool",
+        "byte": "uint_8",
+        "char": "char",
+        "float32": "float",
+        "float64": "float",
+        "int8": "int8_t",
+        "uint8": "uint8_t",
+        "int16": "int16",
+        "uint16": "uin16",
+        "int32": "int32",
+        "uint32": "uint32",
+        "int64": "int64",
+        "uint64": "uint64",
+        "string": "std::string"
+        }
+
 def ros_camel_to_snake(text):
     text = stage1_input_pattern.sub(output_format, text)
     text = stage2_input_pattern.sub(output_format, text)
@@ -49,15 +68,29 @@ def get_service_description(lines, package, typ, name, target_output):
             if line == '---':
                 process_parameters = False
             elif process_parameters:
-                parameter_typ, parameter_name = line.split(' ')[:2]
-                service_description["parameters"].append({ 'name': parameter_name, 'typ': parameter_typ })
+                ros_typ, parameter_name = line.split(' ')[:2]
+                try:
+                    parameter_package, ros_typ = ros_typ.split('/')
+                    c_typ = None
+                except ValueError:
+                    #parameter_typ = ros_type_map[ros_typ]
+                    c_typ = ros_type_map[ros_typ]
+                    parameter_package = None
+                service_description["parameters"].append({ 'name': parameter_name, 'package': parameter_package, 'c_typ': c_typ, 'ros_typ': ros_typ })
             elif not process_parameters:
-                output_typ, output_name = line.split(' ')[:2]
+                ros_typ, output_name = line.split(' ')[:2]
+                try:
+                    output_package, ros_typ = ros_typ.split('/')
+                    c_typ = None
+                except ValueError:
+                    c_typ = ros_type_map[ros_typ]
+                    #output_typ = ros_typ
+                    output_package = None
                 outputs.append(output_name)
                 if output_name == target_output:
                     found_output = True
                     #print("Service {} of type {} used output {}".format(name, typ, output_name))
-                    service_description["output"] = { 'name': output_name, 'typ': output_typ }
+                    service_description["output"] = { 'name': output_name, 'package': output_package, 'c_typ': c_typ, 'ros_typ': ros_typ }
             else:
                 print("Service {} Error: Unexpected service description format:\n{}".format(name, line))
     if not found_output:

@@ -32,16 +32,14 @@ public:
   {
     return providedBasicPorts({
       {% for parameter in parameters %}
-        BT::InputPort<{{ 'std::'+parameter[0] if parameter[0] in ['string'] else parameter[0] }}>(
-          "{{ parameter[1] }}",
-          ""),
+      BT::InputPort<{{ parameter.c_typ if not parameter.package else parameter.package + "::msg::" + parameter.ros_typ }}>(
+        "{{ parameter.name }}",
+        ""),
       {% endfor %}
-      {% for output in outputs %}
-        BT::OutputPort<{{ 'std::'+output[0] if output[0] in ['string'] else output[0] }}>(
-            "{{ output[1] }}",
-            "")
-        });
-      {% endfor %}
+      BT::OutputPort<{{ output.c_typ if not output.package else output.package + "::msg::" + output.ros_typ }}>(
+        "{{ output.name }}",
+        "")
+    });
   }
 
   void set_coresense_parameter();
