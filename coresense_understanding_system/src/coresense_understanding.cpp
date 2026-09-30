@@ -5,6 +5,7 @@
 #include <vector>
 #include <filesystem>
 #include <exception>
+#include <unistd.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
