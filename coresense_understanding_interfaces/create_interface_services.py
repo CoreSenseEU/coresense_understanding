@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 from os.path import splitext, split, join
 import re
+import sys
 import yaml
 from jinja2 import Environment, PackageLoader, select_autoescape, FileSystemLoader
 from ament_index_python.packages import get_package_share_directory
@@ -48,54 +49,82 @@ def ros_camel_to_snake(text):
     return text.lower() 
 
 
-def get_service_description(lines, package, typ, name, target_output):
+def get_service_description(service):
+    package, typ = service["typ"].split('/')
+    # process concepts, representation_classes, requirements
+    packages.append(package)
+    share_dir = get_package_share_directory(package)
+    file_path = join(share_dir, 'srv', typ + '.srv')
+    name = service["name"]
     service_description = {
-            'package': package,
-            'name': name,
-            'name_sanitized': name.replace('/', '_').lstrip('_'),
-            'name_sanitized_camel': ''.join(word.capitalize() for word in name.replace('/','_').split('_')),
-            'typ': typ,
-            'typ_snake': ros_camel_to_snake(typ),
-            'parameters': [],
-            'output': {}
+        'package': package,
+        'name': name,
+        'name_sanitized': name.replace('/', '_').lstrip('_'),
+        'name_sanitized_camel': ''.join(word.capitalize() for word in name.replace('/','_').split('_')),
+        'typ': typ,
+        'typ_snake': ros_camel_to_snake(typ),
+        'parameters': [],
+        'output': {
+            'concepts': [],
+            'representation_classes': [],
+            'properties': []
             }
-    process_parameters = True
-    found_output = False
-    outputs = []
-    for line in lines:
-        line = line.strip()
-        if line and not line.startswith('#'):
-            if line == '---':
-                process_parameters = False
-            elif process_parameters:
-                ros_typ, parameter_name = line.split(' ')[:2]
-                try:
-                    parameter_package, ros_typ = ros_typ.split('/')
-                    c_typ = None
-                except ValueError:
-                    #parameter_typ = ros_type_map[ros_typ]
-                    c_typ = ros_type_map[ros_typ]
-                    parameter_package = None
-                service_description["parameters"].append({ 'name': parameter_name, 'package': parameter_package, 'c_typ': c_typ, 'ros_typ': ros_typ })
-            elif not process_parameters:
-                ros_typ, output_name = line.split(' ')[:2]
-                try:
-                    output_package, ros_typ = ros_typ.split('/')
-                    c_typ = None
-                except ValueError:
-                    c_typ = ros_type_map[ros_typ]
-                    #output_typ = ros_typ
-                    output_package = None
-                outputs.append(output_name)
-                if output_name == target_output:
-                    found_output = True
-                    #print("Service {} of type {} used output {}".format(name, typ, output_name))
-                    service_description["output"] = { 'name': output_name, 'package': output_package, 'c_typ': c_typ, 'ros_typ': ros_typ }
-            else:
-                print("Service {} Error: Unexpected service description format:\n{}".format(name, line))
-    if not found_output:
-        print("Error: Did not find output {} for service {} of type {}.".format(target_output, name, typ))
-        print("Possible outputs: {}".format(outputs))
+        }
+    # concepts and so on belong to parameters and the output
+    # output should be simple, just add it to the output.
+    target_output = service["output"]["field"]
+    with open(file_path) as service_file:
+        process_parameters = True
+        found_output = False
+        outputs = []
+        for line in service_file:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                if line == '---':
+                    process_parameters = False
+                elif process_parameters:
+                    ros_typ, parameter_name = line.split(' ')[:2]
+                    try:
+                        parameter_package, ros_typ = ros_typ.split('/')
+                        c_typ = None
+                    except ValueError:
+                        #parameter_typ = ros_type_map[ros_typ]
+                        c_typ = ros_type_map[ros_typ]
+                        parameter_package = None
+                    parameter = service["inputs"][parameter_name]
+                    parameter["name"] = parameter_name
+                    parameter["package"] = parameter_package
+                    parameter["c_typ"] = c_typ
+                    parameter["ros_typ"] = ros_typ
+                    service_description["parameters"].append(parameter)
+                elif not process_parameters:
+                    ros_typ, output_name = line.split(' ')[:2]
+                    try:
+                        output_package, ros_typ = ros_typ.split('/')
+                        c_typ = None
+                    except ValueError:
+                        c_typ = ros_type_map[ros_typ]
+                        #output_typ = ros_typ
+                        output_package = None
+                    outputs.append(output_name)
+                    if output_name == target_output:
+                        found_output = True
+                        #print("Service {} of ros type {} used output {}".format(name, ros_typ, output_name))
+                        service_description["output"]["name"] = output_name
+                        service_description["output"]["package"] = output_package
+                        service_description["output"]["c_typ"] = c_typ
+                        service_description["output"]["ros_typ"] = ros_typ
+                        for key in ["concepts", "representation_classes"]:
+                            try:
+                                service_description["output"][key] = service["output"][key]
+                            except KeyError:
+                                service_description["output"][key] = []
+
+                else:
+                    print("Service {} Error: Unexpected service description format:\n{}".format(name, line))
+        if not found_output:
+            print("Error: Did not find output {} for service {} of type {}.".format(target_output, name, typ))
+            print("Possible outputs: {}".format(outputs))
     return service_description
 
 def get_message_description(lines, package, typ):
@@ -140,27 +169,41 @@ def render(template_file, source, target):
 
 if __name__ == '__main__':
     todo = None
+    config_file_path = 'interfaces_config.yaml'
     services = []
     modelets = []
     packages = []
-    with open('interfaces_config.yaml') as interface_config_file:
-        todo = yaml.safe_load(interface_config_file)
-    # collect service descriptions
-    for service in todo['service_wrappers']:
-        package, typ = service["typ"].split('/')
-        packages.append(package)
-        share_dir = get_package_share_directory(package)
-        file_path = join(share_dir, 'srv', typ + '.srv')
-        with open(file_path) as service_file:
-            services.append(get_service_description(service_file, package, typ, service["name"], service["output"]["field"]))
+    try:
+        with open(config_file_path) as interface_config_file:
+            todo = yaml.safe_load(interface_config_file)
+        # collect service descriptions
+    except FileNotFoundError:
+        print("Could not find {}".format(config_file_path))
+        sys.exit(1)
+    except PermissionError:
+        print("Could not read {}".format(config_file_path))
+        sys.exit(2)
+    except yaml.scanner.ScannerError as e:
+        print("Could not parse {}".format(config_file_path))
+        print(e)
+        sys.exit(3)
+    try:
+        for service in todo['service_wrappers']:
+            services.append(get_service_description(service))
+            packages.append(services[-1]["package"])
+    except TypeError:
+        print("Found no services configured in {}".format(config_file_path))
     # collect modelet descriptions
-    for message in todo['triplestar_modelet_retrieval']:
-        package, typ = message["typ"].split('/')
-        packages.append(package)
-        share_dir = get_package_share_directory(package)
-        file_path = join(share_dir, 'msg', typ + '.msg')
-        with open(file_path) as message_file:
-            modelets.append(message | get_message_description(message_file, package, typ))
+    try:
+        for message in todo['triplestar_modelet_retrieval']:
+            package, typ = message["typ"].split('/')
+            packages.append(package)
+            share_dir = get_package_share_directory(package)
+            file_path = join(share_dir, 'msg', typ + '.msg')
+            with open(file_path) as message_file:
+                modelets.append(message | get_message_description(message_file, package, typ))
+    except TypeError:
+        print("Found no modelet retrievals configured in {}".format(config_file_path))
     # write common files
     for file in global_files:
         template = env.get_template(file)

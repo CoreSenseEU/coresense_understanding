@@ -1,21 +1,24 @@
 {
   "name": "Call{{ name_sanitized_camel }}Service",
-  "inputs": [
-  {% for parameter in parameters %}
+  "inputs": [{% for parameter in parameters %}
+
     {
       "name": "{{ parameter.name }}",
       "formalism" : "ros:msg:{{ parameter.ros_typ if not parameter.package else parameter.package + "/" + parameter.ros_typ }}",
-      "concepts": [{% for concept in concepts %}"{{ concept }}", {% endfor %}],
-      "representation_classes": [{% for rc in representation_classes %}"{{ rc }}", {% endfor %}],
-      "requirements": [{% for rc in representation_classes %}"{{ rc }}", {% endfor %}]
-    },
-    {% endfor %}
-  ],
+      "concepts": [{% for concept in concepts %}"{{ concept }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+      "representation_classes": [{% for rc in representation_classes %}"{{ rc }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+      "requirements": [{% for requirement in requirements %}
+      {
+        "klass": "{{ requirement.typ }}",
+        "value_range": "{{ requirement.value_range }}"
+      }{{ "," if not loop.last }}
+      {% endfor %}]
+    }{{- "," if not loop.last }}{% endfor %}],
   "engine_output": {
     "name": "{{ output.name }}",
     "formalism" : "ros:msg:{{ output.ros_typ if not output.package else output.package + "/" + output.ros_typ }}",
-    "concepts": [{% for concept in output.concepts %}"{{ concept }}", {% endfor %}],
-    "representation_classes": [{% for rc in output.representation_classes %}"{{ rc }}", {% endfor %}]
+    "concepts": [{% for concept in output.concepts %}"{{ concept }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+    "representation_classes": [{% for rc in output.representation_classes %}"{{ rc }}"{% if not loop.last %}, {% endif %}{% endfor %}]
   },
   "transit_properties": [],
   "time_delay": 0.2,
