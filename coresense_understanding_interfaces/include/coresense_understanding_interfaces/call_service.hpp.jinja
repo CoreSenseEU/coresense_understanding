@@ -33,12 +33,12 @@ public:
     return providedBasicPorts({
       {% for parameter in parameters %}
       BT::InputPort<{{ parameter.c_typ if not parameter.package else parameter.package + "::msg::" + parameter.ros_typ }}>(
-        "{{ parameter.name }}",
-        ""),
+          "{{ parameter.name }}",
+          ""),
       {% endfor %}
       BT::OutputPort<{{ output.c_typ if not output.package else output.package + "::msg::" + output.ros_typ }}>(
-        "{{ output.name }}",
-        "")
+          "{{ output.name }}",
+          "")
     });
   }
 

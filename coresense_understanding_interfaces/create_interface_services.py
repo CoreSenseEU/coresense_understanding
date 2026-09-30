@@ -34,12 +34,12 @@ ros_type_map = {
         "float64": "float",
         "int8": "int8_t",
         "uint8": "uint8_t",
-        "int16": "int16",
-        "uint16": "uin16",
-        "int32": "int32",
-        "uint32": "uint32",
-        "int64": "int64",
-        "uint64": "uint64",
+        "int16": "int16_t",
+        "uint16": "uin16_t",
+        "int32": "int32_t",
+        "uint32": "uint32_t",
+        "int64": "int64_t",
+        "uint64": "uint64_t",
         "string": "std::string"
         }
 
