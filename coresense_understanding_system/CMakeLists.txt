@@ -21,7 +21,6 @@ find_package(ament_index_cpp REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 find_package(std_srvs REQUIRED)
-find_package(coresense_vampire REQUIRED)
 find_package(coresense_msgs REQUIRED)
 find_package(triplestar_msgs REQUIRED)
 find_package(rclcpp REQUIRED)

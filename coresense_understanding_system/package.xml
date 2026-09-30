@@ -4,7 +4,7 @@
   <name>coresense_understanding_system</name>
   <version>0.8.0</version>
   <description>CoreSense Understanding System</description>
-  <maintainer email="A.Gabriel@tudelft.nl">Alex Quin Averie Gabriel</maintainer>
+  <maintainer email="agabriel@4d6.de">Alex Quin Averie Gabriel</maintainer>
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -12,11 +12,16 @@
 
   <build_depend>rclcpp</build_depend>
   <build_depend>rclpy</build_depend>
-  <build_depend>tinyxml2_vendor</build_depend>
-  <build_depend>nlohmann_json_schema_validator_vendor</build_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+
+  <depend>ament_index_cpp</depend>
+  <depend>rclcpp_action</depend>
+
+  <depend>libyaml_vendor</depend>
+  <depend>tinyxml2_vendor</depend>
+  <depend>nlohmann_json_schema_validator_vendor</depend>
 
   <depend>coresense_msgs</depend>
   <depend>triplestar_msgs</depend>

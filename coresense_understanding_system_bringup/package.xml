@@ -4,8 +4,8 @@
   <name>coresense_understanding_system_bringup</name>
   <version>0.8.0</version>
   <description>Bringup package for CoreSense Understanding System</description>
-  <maintainer email="A.Gabriel@tudelft.nl">Alex Quin Averie Gabriel</maintainer>
-  <license>TODO: License declaration</license>
+  <maintainer email="agabriel@4d6.de">Alex Quin Averie Gabriel</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
@@ -14,7 +14,7 @@
 
   <depend>coresense_bringup</depend>
   <depend>coresense_vampire</depend>
-  <depend>coresense_understanding</depend>
+  <depend>coresense_understanding_system</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
